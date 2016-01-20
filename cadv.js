@@ -1,12 +1,57 @@
-// JQuery Needed
-// Crypto MD5 Needed
+/**!
+ * CADV - HTML5 "C"anvas based "ADV"enture game engine. 
+ * Just another Visual Novel game engine. 
+ * Visual Novel games are consider as "Adventure" games in Japan.
+ * 
+ * The 4th generation of BADV.
+ * CADV aims to use less CSS that was required in previous generations.
+ * Plans to write it in ES6(ES2015).
+ * 
+ * Requirements:
+ * jQuery 2.x 
+ * (For $.Animation, will be replaced one I figured how to use jQuery easing with alternate solution)
+ * 
+ * CryptoJS
+ * (For MD5 encryption, might required for generating keys for server requests)
+ * 
+ * Supported Browsers:
+ * WebKit / WebEngine based Browsers, Gecko based Browsers
+ * (IE / Edge not supported, Safari also not supported)
+ * 
+ * Audio format:
+ * Suggests WebM Vorbis, or WebM Opus.
+ * Please check the browser's codec support.
+ * 
+ * @author KiddoKenshin @ K2-R&D.com
+ * @since 2012/04/01, RE: 2013/01/17, TRE: 2013/12/13, C-ADV: 2014/05/26
+ * @version -WORK IN PROGRESS-
+ * 
+ * Current Progress: Audio Related
+ * 
+ * Rough DEMO using CADV: http://furi2purei.com/index.min.html
+//*/
 
-// Common Functions
+//# Common Functions #//
+/** 
+ * Generates MD5 string from supplied string.
+ * (For server interactions, CryptoJS MD5 Needed)
+ * 
+ * @return string
+ */
 function MD5(stringIn) {
+	if (typeof(CryptoJS) == 'undefined') {
+		error('CryptoJS is required to use MD5');
+	}
 	var hash = CryptoJS.MD5(stringIn);
 	return hash.toString();
 }
 
+/** 
+ * Acquire current datetime.
+ * (For server interactions)
+ * 
+ * @return string
+ */
 function getYmdHis() {
 	var date = new Date();
 	var ymdhis = 
@@ -21,6 +66,11 @@ function getYmdHis() {
 	return ymdhis;
 }
 
+/** 
+ * Detects mobile device via user agent.
+ * 
+ * @return boolean
+ */
 var mobile;
 function isMobile() {
 	if (mobile == undefined) {
@@ -32,21 +82,56 @@ function isMobile() {
 	return mobile;
 }
 
-// CADV Related
+/**
+ * Display logs in console. Mostly for debugging purpose.
+ * 
+ * @param string message | String to be output in console.
+ * @param boolean force | Outputs to console despite of not debug mode.
+ * @return void
+ */
+function log(message, force) {
+	if (cadv.system.debug || force === true) {
+		console.log(message);
+	}
+}
+
+/**
+ * Throws an error. Most probably the best way to stop anything moving.
+ * 
+ * @param string message | The error message
+ * @return void
+ */
+function error(message) {
+	alert('Error occured, unable to proceed.');
+	throw Error(message);
+}
+
+//# CADV Related #//
 var cadv = new Object;
 
-// System, change-able
+// System Settings, can be modify to suit user's needs
 cadv.system = {
+	'debug' : false, // Debug mode
 	'title' : 'Canvas_Adventure_Engine', // Rename-able
-	'version' : '', // Set by user
+	'version' : '', // Set by user, to check save files?
 	'width' : '1280', // Game Width
 	'height' : '720', // Game Height
 	'screenscale' : '1.0', // Screen Scaling (Game size / Screen size), Renew Scaling whenever Screen size changed
 	'autoscale' : false, // Screen Scaling (Game size / Screen size), Renew Scaling whenever Screen size changed
 	
 	'textselector' : undefined, // jQuery Object, Will be occupied after created.
-	'textspeed' : '30' // fps
+	'textspeed' : '30', // fps
+	
+	'useaudio' : false // Web Audio API and other Audio related stuff 
 };
+
+// Audio related variables
+cadv.audio = {
+	'context' : NULL
+};
+
+// CSS for text output
+// (Text on Canvas do not recognize new lines)
 cadv.textOut = {
 	'position' : 'absolute',
 	'fontfamily' : 'Meiryo UI',
@@ -66,14 +151,27 @@ cadv.states = {
 // Custom variables, user can add them and manipulate them.
 cadv.customvar = {};
 
-// PRELOAD Functions
+//## PRELOAD Functions ##//
 var loadErrors = 0;
 var preloadImages = {};
 var imageStorages = {};
+
+/**
+ * Add image source to preload list
+ * 
+ * @param string imageID | ID to be use later on manipulating them
+ * @param string imageURL | Image source
+ * @return void
+ */
 cadv.addPreloadImage = function(imageID, imageURL) {
 	preloadImages[imageID] = imageURL;
 };
 
+/**
+ * Start the resource(image) loading.
+ * 
+ * @return void
+ */
 cadv.startPreloadImages = function() {
 	if (!$.isEmptyObject(preloadImages)) {
 		// console.log(Object.keys(preloadImages).length);
@@ -95,8 +193,58 @@ cadv.startPreloadImages = function() {
 
 var preloadAudios = {};
 var audioStorages = {};
+/**
+ * Add audio source to preload list
+ * 
+ * @param string audioID | ID to be use later on manipulating them
+ * @param string audioURL | Audio source
+ * @return void
+ */
+cadv.addPreloadAudio = function(audioID, audioURL) {
+	if (!cadv.system.useaudio) return;
+	preloadAudios[audioID] = audioURL;
+};
+
+/**
+ * Start the resource(audio) loading.
+ * 
+ * @return void
+ */
+cadv.startPreloadAudios = function() {
+	if (!cadv.system.useaudio) return;
+	
+	if (!$.isEmptyObject(preloadAudios)) {
+		// console.log(Object.keys(preloadImages).length);
+		
+		/*
+		function loadToStorage(imageID, imageURL) {
+			var newImage = new Image();
+			newImage.onload = function() {
+				newImage.onload = null;
+				imageStorages[imageID] = newImage;
+			};
+			newImage.src = preloadImages[imageID];
+		}
+		
+		for (var imageId in preloadImages) {
+			loadToStorage(imageId, preloadImages[imageId]);
+		}
+		//*/
+	}
+};
 
 cadv.startPreload = function() {
+	if (cadv.system.useaudio) {
+		if (typeof(AudioContext) != 'undefined') {
+			// Web Audio API is all unprefixed
+			cadv.audio.context = AudioContext();
+		} else {
+			// FORCE to switch back
+			cadv.system.useaudio = false;
+			console.log('Unable to create audio context. Web Audio API might be not available.');
+		}
+	}
+	
 	cadv.startPreloadImages();
 	// cadv.startPreloadAudios();
 };
