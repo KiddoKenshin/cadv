@@ -22,6 +22,11 @@
  * Suggests WebM Vorbis, or WebM Opus.
  * Please check the browser's codec support.
  * 
+ * Bundled Library / Plugin:
+ * jQuery easing
+ * ScreenFull
+ * LZ-String
+ * 
  * @author KiddoKenshin @ K2-R&D.com
  * @since 2012/04/01, RE: 2013/01/17, TRE: 2013/12/13, C-ADV: 2014/05/26
  * @version -WORK IN PROGRESS-
@@ -64,6 +69,37 @@ function getYmdHis() {
 	;
 	delete date;
 	return ymdhis;
+}
+
+function storeToLocalStorage(uid, dataString) {
+	if (sessionStorage == undefined) {
+		return false;
+	}
+	
+	try {
+		sessionStorage.setItem(uid, dataString);
+		return true;
+	} catch (error) {
+		log(error);
+		log('Ignoring errors. (HTML5 LocalStorage Not available!)');
+		return false;
+	}
+}
+
+function getFromLocalStorage(uid) {
+	var data = null;
+	if (sessionStorage != undefined) {
+		data = sessionStorage.getItem(uid);
+	}
+	return data;
+}
+
+function removeFromLocalStorage(uid) {
+	sessionStorage.removeItem(uid);
+}
+
+function clearLocalStorage() {
+	sessionStorage.clear();
 }
 
 /** 
@@ -112,22 +148,24 @@ var cadv = new Object;
 // System Settings, can be modify to suit user's needs
 cadv.system = {
 	'debug' : false, // Debug mode
+	'stoponerror' : true, // Stop engine when error occured
 	'title' : 'Canvas_Adventure_Engine', // Rename-able
 	'version' : '', // Set by user, to check save files?
-	'width' : '1280', // Game Width
-	'height' : '720', // Game Height
-	'screenscale' : '1.0', // Screen Scaling (Game size / Screen size), Renew Scaling whenever Screen size changed
-	'autoscale' : false, // Screen Scaling (Game size / Screen size), Renew Scaling whenever Screen size changed
+	'width' : 1280, // Game Width
+	'height' : 720, // Game Height
+	'defaultbgcolor' : '#000000', // Default background color
+	'screenscale' : 1.0, // Screen Scaling (Game size / Screen size), Renew Scaling whenever Screen size changed
+	'autoscale' : false, // Perform auto scaling (Fit to screen)
 	
 	'textselector' : undefined, // jQuery Object, Will be occupied after created.
-	'textspeed' : '30', // fps
+	'textspeed' : 30, // fps
 	
 	'useaudio' : false // Web Audio API and other Audio related stuff 
 };
 
 // Audio related variables
 cadv.audio = {
-	'context' : NULL
+	'context' : null
 };
 
 // CSS for text output
@@ -153,8 +191,14 @@ cadv.customvar = {};
 
 //## PRELOAD Functions ##//
 var loadErrors = 0;
-var preloadImages = {};
-var imageStorages = {};
+var preload = {
+	'images' : {},
+	'audios' : {}
+};
+var resources = {
+	'images' : {},
+	'audios' : {}
+};
 
 /**
  * Add image source to preload list
@@ -164,7 +208,7 @@ var imageStorages = {};
  * @return void
  */
 cadv.addPreloadImage = function(imageID, imageURL) {
-	preloadImages[imageID] = imageURL;
+	preload.images[imageID] = imageURL;
 };
 
 /**
@@ -173,26 +217,54 @@ cadv.addPreloadImage = function(imageID, imageURL) {
  * @return void
  */
 cadv.startPreloadImages = function() {
-	if (!$.isEmptyObject(preloadImages)) {
-		// console.log(Object.keys(preloadImages).length);
+	if (!$.isEmptyObject(preload.images)) {
+		log(Object.keys(preload.images).length);
 		
-		function loadToStorage(imageID, imageURL) {
+		function loadToStorage(imageID, imageURL, noLocalStorage) {
 			var newImage = new Image();
 			newImage.onload = function() {
 				newImage.onload = null;
-				imageStorages[imageID] = newImage;
+				resources.images[imageID] = newImage;
+				
+				if (noLocalStorage !== true) {
+					var dCanvas = document.createElement('canvas');
+					dCanvas.width = newImage.width;
+					dCanvas.height = newImage.height;
+					
+					dCanvas.getContext('2d').drawImage(newImage, 0, 0);
+					var string = dCanvas.toDataURL('image/png');
+					var compressed = LZString.compress(string);
+					
+					delete dCanvas;
+					
+					storeToLocalStorage(imageID, compressed);
+				}
 			};
-			newImage.src = preloadImages[imageID];
+			newImage.onerror = function(e) {
+				var message = 'Error occured on obtaining ' + newImage.src;
+				delete preload.images[imageID];
+				delete newImage;
+				loadErrors++;
+				log(message, true);
+				if (cadv.system.stoponerror) {
+					error(message);
+				}
+			};
+			newImage.src = preload.images[imageID];
 		}
 		
-		for (var imageId in preloadImages) {
-			loadToStorage(imageId, preloadImages[imageId]);
+		for (var imageId in preload.images) {
+			var fromLocalStorage = getFromLocalStorage(imageId);
+			if (fromLocalStorage !== null) {
+				var decompressed = LZString.decompress(fromLocalStorage);
+				loadToStorage(imageId, decompressed, true);
+			} else {
+				loadToStorage(imageId, preload.images[imageId]);
+			}
 		}
 	}
 };
 
-var preloadAudios = {};
-var audioStorages = {};
 /**
  * Add audio source to preload list
  * 
@@ -202,7 +274,7 @@ var audioStorages = {};
  */
 cadv.addPreloadAudio = function(audioID, audioURL) {
 	if (!cadv.system.useaudio) return;
-	preloadAudios[audioID] = audioURL;
+	preload.audios[audioID] = audioURL;
 };
 
 /**
@@ -214,20 +286,20 @@ cadv.startPreloadAudios = function() {
 	if (!cadv.system.useaudio) return;
 	
 	if (!$.isEmptyObject(preloadAudios)) {
-		// console.log(Object.keys(preloadImages).length);
+		// log(Object.keys(preload.images).length);
 		
 		/*
 		function loadToStorage(imageID, imageURL) {
 			var newImage = new Image();
 			newImage.onload = function() {
 				newImage.onload = null;
-				imageStorages[imageID] = newImage;
+				resources.images[imageID] = newImage;
 			};
-			newImage.src = preloadImages[imageID];
+			newImage.src = preload.images[imageID];
 		}
 		
-		for (var imageId in preloadImages) {
-			loadToStorage(imageId, preloadImages[imageId]);
+		for (var imageId in preload.images) {
+			loadToStorage(imageId, preload.images[imageId]);
 		}
 		//*/
 	}
@@ -240,8 +312,7 @@ cadv.startPreload = function() {
 			cadv.audio.context = AudioContext();
 		} else {
 			// FORCE to switch back
-			cadv.system.useaudio = false;
-			console.log('Unable to create audio context. Web Audio API might be not available.');
+			log('Unable to create audio context. Web Audio API might be not available.');
 		}
 	}
 	
@@ -268,6 +339,10 @@ cadv.performScaling = function() {
 	cadv.system.screenscale = window.innerWidth / cadv.system.width;
 	if (cadv.system.height * cadv.system.screenscale > window.innerHeight) {
 		cadv.system.screenscale = window.innerHeight / cadv.system.height;
+	}
+	
+	if (cadv.system.screenscale < 0.5) {
+		cadv.system.screenscale = 0.5;
 	}
 	
 	if (cadv.system.screenscale > 1.0) {
@@ -341,7 +416,7 @@ cadv.createImage = function(imageType, uid, imageUrl, extraParams) {
 };
 
 cadv.createImageV2 = function(imageType, uid, imageID, extraParams) {
-	var newImage = imageStorages[imageID];
+	var newImage = resources.images[imageID];
 	var newCanvas = document.createElement('canvas');
 	var detailObject = {
 			'id' : uid, // Unique ID
@@ -478,7 +553,7 @@ cadv.drawDetail = function(detailObject, parentObject) {
 			detailObject.percentY = '0';
 		}
 	}
-	// console.log(useY);
+	// log(useY);
 	
 	if (detailObject.xSlice == '1' && detailObject.ySlice == '1') {
 		// ncContext.drawImage(detailObject.imageObject, useX, useY, detailObject.imageObject.width * cadv.system.screenscale, detailObject.imageObject.height * cadv.system.screenscale);
@@ -491,7 +566,7 @@ cadv.drawDetail = function(detailObject, parentObject) {
 		var yOffset = ySize * parseInt(detailObject.yCount);
 		ncContext.drawImage(detailObject.imageObject, xOffset, yOffset, xSize, ySize, parseFloat(useX) + parseFloat(parentObject.x), parseFloat(useY) + parseFloat(parentObject.y), xSize, ySize);
 		
-		// console.log(ySize);
+		// log(ySize);
 		
 		delete xSize, ySize, xOffset, yOffset;
 	}
@@ -515,7 +590,7 @@ cadv.drawCanvas = function() {
 	if (true || cadv.system.screenscale != '1.0') {
 		widthOffset = Math.round(window.innerWidth - (cadv.system.width * cadv.system.screenscale));
 		heightOffset = Math.round(window.innerHeight - (cadv.system.height * cadv.system.screenscale));
-		// console.log($(window).height());
+		// log($(window).height());
 	}
 	//*/
 	
@@ -560,7 +635,7 @@ cadv.drawCanvas = function() {
 	// Text output
 	/*
 	if (detailObjects.messagewindow.base != undefined) {
-		// console.log(parseInt(cadv.textOut.left) + (detailObjects.messagewindow.base.x) + widthOffset);
+		// log(parseInt(cadv.textOut.left) + (detailObjects.messagewindow.base.x) + widthOffset);
 		$('div#textout').css('left', ((parseInt(cadv.textOut.left) + (detailObjects.messagewindow.base.x)) * cadv.system.screenscale) + widthOffset + 'px');
 		// $('div#textout').css('left', '1280px');
 		// $('div#textout').css('top', parseInt(cadv.textOut.top) + (detailObjects.messagewindow.base.y) + heightOffset + 'px');
@@ -568,7 +643,7 @@ cadv.drawCanvas = function() {
 		// $('div#textout').css('zoom', cadv.system.screenscale); // Need to renew every refresh
 		$('div#textout').css('transform', 'scale(' + cadv.system.screenscale + ')'); // Need to renew every refresh
 		$('div#textout').css('transform-origin', '0% 0%');
-		// console.log(((parseInt(cadv.textOut.top) + (detailObjects.messagewindow.base.y)) * cadv.system.screenscale));
+		// log(((parseInt(cadv.textOut.top) + (detailObjects.messagewindow.base.y)) * cadv.system.screenscale));
 	}
 	//*/
 	
@@ -577,7 +652,7 @@ cadv.drawCanvas = function() {
 
 cadv.resetCanvas = function() {
 	canvasContext.clearRect(0, 0, canvas.width, canvas.height);
-	canvasContext.fillStyle = 'rgb(0, 0, 0)';
+	canvasContext.fillStyle = cadv.system.defaultbgcolor;
 	canvasContext.fillRect(0, 0, canvas.width, canvas.height);
 	
 	// Reset fillStyle
@@ -597,37 +672,41 @@ cadv.resetCanvas = function() {
 };
 
 cadv.setPosition = function() {
-	var posTimer = setInterval(function() {
-		if (detailObjects.messagewindow == undefined) {
-			console.log('Message Window not ready!');
-			return;
-		} else {
-			clearInterval(posTimer);
+	if (detailObjects.messagewindow == undefined) {
+		log('Message Window not ready!');
+		setTimeout(cadv.setPosition, 500);
+		return;
+	}
+	
+	// TODO: Center canvas content if browser width is larger than canvas contents, even if scale not applied?
+	
+	if (cadv.system.screenscale != 1.0) {
+		var widthOffset = Math.round(window.innerWidth - (cadv.system.width * cadv.system.screenscale)) / 2;
+		var heightOffset = Math.round(window.innerHeight - (cadv.system.height * cadv.system.screenscale)) / 2;
+		
+		if (cadv.system.screenscale <= 0.5) {
+			heightOffset = 0;
+			// $('body').css('height', (cadv.system.height / 2) + 'px');
 		}
 		
-		if (cadv.system.screenscale != '1.0') {
-			var widthOffset = Math.round(window.innerWidth - (cadv.system.width * cadv.system.screenscale)) / 2;
-			var heightOffset = Math.round(window.innerHeight - (cadv.system.height * cadv.system.screenscale)) / 2;
-			
-			$('canvas#cadv').css({
-				'position' : 'fixed', // absolute?
-				'left' : widthOffset + 'px',
-				'top' : heightOffset + 'px'
-			});
-			
-			$('div#textout').css({
-				'left' : ((parseInt(cadv.textOut.left) + (detailObjects.messagewindow.base.x)) * cadv.system.screenscale) + widthOffset + 'px',
-				'top' : ((parseInt(cadv.textOut.top) + (detailObjects.messagewindow.base.y)) * cadv.system.screenscale) + heightOffset + 'px',
-				'transform' : 'scale(' + cadv.system.screenscale + ')',
-				'transform-origin' : '0% 0%'
-			});
-		} else {
-			$('div#textout').css({
-				'left' : (parseInt(cadv.textOut.left) + (detailObjects.messagewindow.base.x)) + 'px',
-				'top' : (parseInt(cadv.textOut.top) + (detailObjects.messagewindow.base.y)) + 'px',
-			});
-		}
-	}, 500);
+		$('canvas#cadv').css({
+			'position' : 'fixed', // absolute?
+			'left' : widthOffset + 'px',
+			'top' : heightOffset + 'px'
+		});
+		
+		$('div#textout').css({
+			'left' : ((parseInt(cadv.textOut.left) + (detailObjects.messagewindow.base.x)) * cadv.system.screenscale) + widthOffset + 'px',
+			'top' : ((parseInt(cadv.textOut.top) + (detailObjects.messagewindow.base.y)) * cadv.system.screenscale) + heightOffset + 'px',
+			'transform' : 'scale(' + cadv.system.screenscale + ')',
+			'transform-origin' : '0% 0%'
+		});
+	} else {
+		$('div#textout').css({
+			'left' : (parseInt(cadv.textOut.left) + (detailObjects.messagewindow.base.x)) + 'px',
+			'top' : (parseInt(cadv.textOut.top) + (detailObjects.messagewindow.base.y)) + 'px',
+		});
+	}
 };
 
 cadv.start = function(callback) {
@@ -655,10 +734,13 @@ cadv.init = function(callback) {
 	canvasContext = canvas.getContext('2d');
 	
 	// Append Canvas to HTML Document(Body)
-	$('body').empty().append(canvas);
+	$('body').empty().append(canvas).css('background-color', cadv.system.defaultbgcolor);
+	
+	// Default CSS settings for all browsers
+	$('head').prepend('<style>*{padding:0;margin:0;}::-webkit-scrollbar{display: none;}canvas{vertical-align:top;}</style>');
 	
 	var timer = setInterval(function() {
-		if ((Object.keys(preloadImages).length + Object.keys(preloadAudios).length - loadErrors) == (Object.keys(imageStorages).length + Object.keys(audioStorages).length)) {
+		if ((Object.keys(preload.images).length + Object.keys(preload.audios).length - loadErrors) == (Object.keys(resources.images).length + Object.keys(resources.audios).length)) {
 			clearTimeout(timer);
 			
 			// Create Text Output
@@ -672,10 +754,15 @@ cadv.init = function(callback) {
 			$('body').append(newDiv);
 			cadv.system.textselector = $('div#textout');
 			
+			// If autoscaling enabled
+			if (cadv.system.autoscale) {
+				cadv.performScaling();
+			}
+			
 			if (callback !== undefined && typeof(callback) == 'function') {
 				callback();
 			} else {
-				// Ladies and Gentlements, start you engines!
+				// Ladies and Gentlemen, start your engines!
 				//cadv.start();
 			}
 			
@@ -794,6 +881,10 @@ cadv.textWriter = function(inputString) {
 // Event Listeners
 $(window).resize(function(e) {
 	e.preventDefault();
+	if (cadv.system.autoscale) {
+		$(window).resize(cadv.performScaling);
+	}
+	
 	cadv.setPosition();
 });
 
@@ -875,5 +966,16 @@ jQuery.easing.jswing=jQuery.easing.swing;jQuery.extend(jQuery.easing,{def:"easeO
 * (c) Sindre Sorhus; MIT License
 */
 !function(){"use strict";var a="undefined"!=typeof module&&module.exports,b="undefined"!=typeof Element&&"ALLOW_KEYBOARD_INPUT"in Element,c=function(){for(var a,b,c=[["requestFullscreen","exitFullscreen","fullscreenElement","fullscreenEnabled","fullscreenchange","fullscreenerror"],["webkitRequestFullscreen","webkitExitFullscreen","webkitFullscreenElement","webkitFullscreenEnabled","webkitfullscreenchange","webkitfullscreenerror"],["webkitRequestFullScreen","webkitCancelFullScreen","webkitCurrentFullScreenElement","webkitCancelFullScreen","webkitfullscreenchange","webkitfullscreenerror"],["mozRequestFullScreen","mozCancelFullScreen","mozFullScreenElement","mozFullScreenEnabled","mozfullscreenchange","mozfullscreenerror"],["msRequestFullscreen","msExitFullscreen","msFullscreenElement","msFullscreenEnabled","MSFullscreenChange","MSFullscreenError"]],d=0,e=c.length,f={};e>d;d++)if(a=c[d],a&&a[1]in document){for(d=0,b=a.length;b>d;d++)f[c[0][d]]=a[d];return f}return!1}(),d={request:function(a){var d=c.requestFullscreen;a=a||document.documentElement,/5\.1[\.\d]* Safari/.test(navigator.userAgent)?a[d]():a[d](b&&Element.ALLOW_KEYBOARD_INPUT)},exit:function(){document[c.exitFullscreen]()},toggle:function(a){this.isFullscreen?this.exit():this.request(a)},onchange:function(){},onerror:function(){},raw:c};return c?(Object.defineProperties(d,{isFullscreen:{get:function(){return!!document[c.fullscreenElement]}},element:{enumerable:!0,get:function(){return document[c.fullscreenElement]}},enabled:{enumerable:!0,get:function(){return!!document[c.fullscreenEnabled]}}}),document.addEventListener(c.fullscreenchange,function(a){d.onchange.call(d,a)}),document.addEventListener(c.fullscreenerror,function(a){d.onerror.call(d,a)}),void(a?module.exports=d:window.screenfull=d)):void(a?module.exports=!1:window.screenfull=!1)}();
+
+//Copyright (c) 2013 Pieroxy <pieroxy@pieroxy.net>
+//This work is free. You can redistribute it and/or modify it
+//under the terms of the WTFPL, Version 2
+//For more information see LICENSE.txt or http://www.wtfpl.net/
+//
+//For more information, the home page:
+//http://pieroxy.net/blog/pages/lz-string/testing.html
+//
+//LZ-based compression algorithm, version 1.4.4
+var LZString=function(){function o(o,r){if(!t[o]){t[o]={};for(var n=0;n<o.length;n++)t[o][o.charAt(n)]=n}return t[o][r]}var r=String.fromCharCode,n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",e="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",t={},i={compressToBase64:function(o){if(null==o)return"";var r=i._compress(o,6,function(o){return n.charAt(o)});switch(r.length%4){default:case 0:return r;case 1:return r+"===";case 2:return r+"==";case 3:return r+"="}},decompressFromBase64:function(r){return null==r?"":""==r?null:i._decompress(r.length,32,function(e){return o(n,r.charAt(e))})},compressToUTF16:function(o){return null==o?"":i._compress(o,15,function(o){return r(o+32)})+" "},decompressFromUTF16:function(o){return null==o?"":""==o?null:i._decompress(o.length,16384,function(r){return o.charCodeAt(r)-32})},compressToUint8Array:function(o){for(var r=i.compress(o),n=new Uint8Array(2*r.length),e=0,t=r.length;t>e;e++){var s=r.charCodeAt(e);n[2*e]=s>>>8,n[2*e+1]=s%256}return n},decompressFromUint8Array:function(o){if(null===o||void 0===o)return i.decompress(o);for(var n=new Array(o.length/2),e=0,t=n.length;t>e;e++)n[e]=256*o[2*e]+o[2*e+1];var s=[];return n.forEach(function(o){s.push(r(o))}),i.decompress(s.join(""))},compressToEncodedURIComponent:function(o){return null==o?"":i._compress(o,6,function(o){return e.charAt(o)})},decompressFromEncodedURIComponent:function(r){return null==r?"":""==r?null:(r=r.replace(/ /g,"+"),i._decompress(r.length,32,function(n){return o(e,r.charAt(n))}))},compress:function(o){return i._compress(o,16,function(o){return r(o)})},_compress:function(o,r,n){if(null==o)return"";var e,t,i,s={},p={},u="",c="",a="",l=2,f=3,h=2,d=[],m=0,v=0;for(i=0;i<o.length;i+=1)if(u=o.charAt(i),Object.prototype.hasOwnProperty.call(s,u)||(s[u]=f++,p[u]=!0),c=a+u,Object.prototype.hasOwnProperty.call(s,c))a=c;else{if(Object.prototype.hasOwnProperty.call(p,a)){if(a.charCodeAt(0)<256){for(e=0;h>e;e++)m<<=1,v==r-1?(v=0,d.push(n(m)),m=0):v++;for(t=a.charCodeAt(0),e=0;8>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;h>e;e++)m=m<<1|t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=a.charCodeAt(0),e=0;16>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}l--,0==l&&(l=Math.pow(2,h),h++),delete p[a]}else for(t=s[a],e=0;h>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;l--,0==l&&(l=Math.pow(2,h),h++),s[c]=f++,a=String(u)}if(""!==a){if(Object.prototype.hasOwnProperty.call(p,a)){if(a.charCodeAt(0)<256){for(e=0;h>e;e++)m<<=1,v==r-1?(v=0,d.push(n(m)),m=0):v++;for(t=a.charCodeAt(0),e=0;8>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;h>e;e++)m=m<<1|t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=a.charCodeAt(0),e=0;16>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}l--,0==l&&(l=Math.pow(2,h),h++),delete p[a]}else for(t=s[a],e=0;h>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;l--,0==l&&(l=Math.pow(2,h),h++)}for(t=2,e=0;h>e;e++)m=m<<1|1&t,v==r-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;for(;;){if(m<<=1,v==r-1){d.push(n(m));break}v++}return d.join("")},decompress:function(o){return null==o?"":""==o?null:i._decompress(o.length,32768,function(r){return o.charCodeAt(r)})},_decompress:function(o,n,e){var t,i,s,p,u,c,a,l,f=[],h=4,d=4,m=3,v="",w=[],A={val:e(0),position:n,index:1};for(i=0;3>i;i+=1)f[i]=i;for(p=0,c=Math.pow(2,2),a=1;a!=c;)u=A.val&A.position,A.position>>=1,0==A.position&&(A.position=n,A.val=e(A.index++)),p|=(u>0?1:0)*a,a<<=1;switch(t=p){case 0:for(p=0,c=Math.pow(2,8),a=1;a!=c;)u=A.val&A.position,A.position>>=1,0==A.position&&(A.position=n,A.val=e(A.index++)),p|=(u>0?1:0)*a,a<<=1;l=r(p);break;case 1:for(p=0,c=Math.pow(2,16),a=1;a!=c;)u=A.val&A.position,A.position>>=1,0==A.position&&(A.position=n,A.val=e(A.index++)),p|=(u>0?1:0)*a,a<<=1;l=r(p);break;case 2:return""}for(f[3]=l,s=l,w.push(l);;){if(A.index>o)return"";for(p=0,c=Math.pow(2,m),a=1;a!=c;)u=A.val&A.position,A.position>>=1,0==A.position&&(A.position=n,A.val=e(A.index++)),p|=(u>0?1:0)*a,a<<=1;switch(l=p){case 0:for(p=0,c=Math.pow(2,8),a=1;a!=c;)u=A.val&A.position,A.position>>=1,0==A.position&&(A.position=n,A.val=e(A.index++)),p|=(u>0?1:0)*a,a<<=1;f[d++]=r(p),l=d-1,h--;break;case 1:for(p=0,c=Math.pow(2,16),a=1;a!=c;)u=A.val&A.position,A.position>>=1,0==A.position&&(A.position=n,A.val=e(A.index++)),p|=(u>0?1:0)*a,a<<=1;f[d++]=r(p),l=d-1,h--;break;case 2:return w.join("")}if(0==h&&(h=Math.pow(2,m),m++),f[l])v=f[l];else{if(l!==d)return null;v=s+s.charAt(0)}w.push(v),f[d++]=s+v.charAt(0),h--,s=v,0==h&&(h=Math.pow(2,m),m++)}}};return i}();"function"==typeof define&&define.amd?define(function(){return LZString}):"undefined"!=typeof module&&null!=module&&(module.exports=LZString);
 
 // END OF FILE
