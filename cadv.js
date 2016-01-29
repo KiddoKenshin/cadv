@@ -71,6 +71,13 @@ function getYmdHis() {
 	return ymdhis;
 }
 
+/**
+ * Stores data to Web Storage for later usage. (Session Storage)
+ * 
+ * @param string uid | unique id to be use later
+ * @param string dataString | the data to be store
+ * @returns boolean
+ */
 function storeToLocalStorage(uid, dataString) {
 	if (sessionStorage == undefined) {
 		return false;
@@ -86,6 +93,12 @@ function storeToLocalStorage(uid, dataString) {
 	}
 }
 
+/**
+ * Retrieves data from Web Storage
+ * 
+ * @param string uid | unique id to claim data
+ * @returns string
+ */
 function getFromLocalStorage(uid) {
 	var data = null;
 	if (sessionStorage != undefined) {
@@ -94,10 +107,21 @@ function getFromLocalStorage(uid) {
 	return data;
 }
 
+/**
+ * Remove data from WebStorage
+ * 
+ * @param string uid | unique id to remove
+ * @return void
+ */
 function removeFromLocalStorage(uid) {
 	sessionStorage.removeItem(uid);
 }
 
+/**
+ * Clear all Web Storage (Session Storage)
+ * 
+ * @return void
+ */
 function clearLocalStorage() {
 	sessionStorage.clear();
 }
@@ -182,6 +206,7 @@ cadv.textOut = {
 };
 
 // In game states, not to be overwritten by user.
+// TODO: Create this dynamically so it won't be overwritten easily?
 cadv.states = {
 	'outputingtext'	: false
 };
@@ -312,6 +337,7 @@ cadv.startPreload = function() {
 			cadv.audio.context = AudioContext();
 		} else {
 			// FORCE to switch back
+			cadv.system.useaudio = false;
 			log('Unable to create audio context. Web Audio API might be not available.');
 		}
 	}
