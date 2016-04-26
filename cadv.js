@@ -278,6 +278,43 @@ cadv.startPreloadImages = function() {
 				}
 			};
 			newImage.src = preload.images[imageID];
+			//*/
+			
+			////
+			/* WIP
+			var request = new XMLHttpRequest();
+			request.open('GET', imageURL, true);
+			request.responseType = 'arraybuffer';
+			request.onload = function(eventObj) {
+				var imageBlob = new Blob([this.response]);
+				var newImage = new Image();
+				newImage.src = URL.createObjectURL(imageBlob);
+				resources.images[imageID] = newImage;
+				log(imageURL + ' loaded!');
+				
+				if (noLocalStorage !== true) {
+					var compressed = LZString.compress(newImage.src);
+					storeToLocalStorage(imageID, compressed);
+				}
+			};
+			request.onerror = function() {
+				var message = imageURL + ' error! (Request)';
+				loadErrors++;
+				log(message);
+				if (cadv.system.stoponerror) {
+					error(message);
+				}
+			};
+			/* WIP
+			request.onprogress = function(eventObj){
+				if(eventObj.lengthComputable) {
+					// var percentComplete = eventObj.loaded / eventObj.total;
+					// do something with this
+				}
+			};
+			//*/
+			// request.send();
+			//*/
 		}
 		
 		for (var imageId in preload.images) {
@@ -312,7 +349,7 @@ cadv.addPreloadAudio = function(audioID, audioURL) {
 cadv.startPreloadAudios = function() {
 	if (!cadv.system.useaudio) return;
 	
-	if (!$.isEmptyObject(preloadAudios)) {
+	if (!$.isEmptyObject(preload.audios)) {
 		log(Object.keys(preload.audios).length);
 		
 		function loadAudio(audioId, audioFileUrl) {
@@ -341,11 +378,77 @@ cadv.startPreloadAudios = function() {
 					error(message);
 				}
 			};
+			/* WIP
+			request.onprogress = function(eventObj){
+				if(eventObj.lengthComputable) {
+					// var percentComplete = eventObj.loaded / eventObj.total;
+					// do something with this
+				}
+			};
+			//*/
 			request.send();
 		}
 		
 		for (var audioId in preload.audios) {
 			loadAudio(audioId, preload.audios[audioId]);
+		}
+		
+	}
+};
+
+/**
+ * Add video source to preload list
+ * 
+ * @param string videoID | ID to be use later on manipulating them
+ * @param string videoURL | Video source
+ * @return void
+ */
+cadv.addPreloadVideo = function(videoID, videoURL) {
+	// TODO: Check browser codec support?
+	preload.videos[videoID] = videoURL;
+};
+
+/**
+ * Start the resource(video) loading.
+ * 
+ * @return void
+ */
+cadv.startPreloadVideos = function() {
+	// TODO: Check browser codec support?
+	
+	if (!$.isEmptyObject(preload.videos)) {
+		log(Object.keys(preload.videos).length);
+		
+		function loadVideo(videoId, videoFileUrl) {
+			var request = new XMLHttpRequest();
+			request.open('GET', videoFileUrl, true);
+			request.responseType = 'arraybuffer';
+			request.onload = function(eventObj) {
+				var videoBlob = new Blob([eventObj.target.response], {type: 'video/webm'}); // TODO: Dynamically?
+				resources.video[videoId] = URL.createObjectURL(videoBlob);
+				log(videoFileUrl + ' loaded!');
+			};
+			request.onerror = function() {
+				var message = videoFileUrl + ' error! (Request)';
+				loadErrors++;
+				log(message);
+				if (cadv.system.stoponerror) {
+					error(message);
+				}
+			};
+			/* WIP
+			request.onprogress = function(eventObj){
+				if(eventObj.lengthComputable) {
+					// var percentComplete = eventObj.loaded / eventObj.total;
+					// do something with this
+				}
+			};
+			//*/
+			request.send();
+		}
+		
+		for (var videoId in preload.videos) {
+			loadVideo(videoId, preload.videos[videoId]);
 		}
 		
 	}
@@ -368,6 +471,7 @@ cadv.startPreload = function() {
 	
 	cadv.startPreloadImages();
 	// cadv.startPreloadAudios();
+	// cadv.startPreloadVideos();
 };
 
 // INGAME Draw mechanics (Core)
