@@ -218,11 +218,13 @@ cadv.customvar = {};
 var loadErrors = 0;
 var preload = {
 	'images' : {},
-	'audios' : {}
+	'audios' : {},
+	'videos' : {}
 };
 var resources = {
 	'images' : {},
-	'audios' : {}
+	'audios' : {},
+	'videos' : {}
 };
 
 /**
@@ -311,22 +313,41 @@ cadv.startPreloadAudios = function() {
 	if (!cadv.system.useaudio) return;
 	
 	if (!$.isEmptyObject(preloadAudios)) {
-		// log(Object.keys(preload.images).length);
+		log(Object.keys(preload.audios).length);
 		
-		/*
-		function loadToStorage(imageID, imageURL) {
-			var newImage = new Image();
-			newImage.onload = function() {
-				newImage.onload = null;
-				resources.images[imageID] = newImage;
+		function loadAudio(audioId, audioFileUrl) {
+			var request = new XMLHttpRequest();
+			request.open('GET', audioFileUrl, true);
+			request.responseType = 'arraybuffer';
+			request.onload = function() {
+				cadv.audio.context.decodeAudioData(request.response, function(buffer) {
+					resources.audios[audioId] = buffer;
+					log(audioFileUrl + ' loaded!');
+				}, function() {
+					// Error Callback
+					var message = audioFileUrl + ' error! (Decode)';
+					loadErrors++;
+					log(message);
+					if (cadv.system.stoponerror) {
+						error(message);
+					}
+				});
 			};
-			newImage.src = preload.images[imageID];
+			request.onerror = function() {
+				var message = audioFileUrl + ' error! (Request)';
+				loadErrors++;
+				log(message);
+				if (cadv.system.stoponerror) {
+					error(message);
+				}
+			};
+			request.send();
 		}
 		
-		for (var imageId in preload.images) {
-			loadToStorage(imageId, preload.images[imageId]);
+		for (var audioId in preload.audios) {
+			loadAudio(audioId, preload.audios[audioId]);
 		}
-		//*/
+		
 	}
 };
 
@@ -339,6 +360,9 @@ cadv.startPreload = function() {
 			// FORCE to switch back
 			cadv.system.useaudio = false;
 			log('Unable to create audio context. Web Audio API might be not available.');
+			
+			// Empty Audio list
+			preload.audios = {};
 		}
 	}
 	
@@ -367,10 +391,12 @@ cadv.performScaling = function() {
 		cadv.system.screenscale = window.innerHeight / cadv.system.height;
 	}
 	
+	// No scale below 0.5 (50%)
 	if (cadv.system.screenscale < 0.5) {
 		cadv.system.screenscale = 0.5;
 	}
 	
+	// Adjust canvas height to adapt changes
 	if (cadv.system.screenscale > 1.0) {
 		canvas.width = window.innerWidth;
 		canvas.height = window.innerHeight;
