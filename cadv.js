@@ -245,76 +245,59 @@ cadv.addPreloadImage = function(imageID, imageURL) {
  */
 cadv.startPreloadImages = function() {
 	if (!$.isEmptyObject(preload.images)) {
-		log(Object.keys(preload.images).length);
+		log('Total of preload images: ' + Object.keys(preload.images).length);
 		
 		function loadToStorage(imageID, imageURL, noLocalStorage) {
-			var newImage = new Image();
-			newImage.onload = function() {
-				newImage.onload = null;
-				resources.images[imageID] = newImage;
-				
-				if (noLocalStorage !== true) {
-					var dCanvas = document.createElement('canvas');
-					dCanvas.width = newImage.width;
-					dCanvas.height = newImage.height;
-					
-					dCanvas.getContext('2d').drawImage(newImage, 0, 0);
-					var string = dCanvas.toDataURL('image/png');
-					var compressed = LZString.compress(string);
-					
-					delete dCanvas;
-					
-					storeToLocalStorage(imageID, compressed);
-				}
-			};
-			newImage.onerror = function(e) {
-				var message = 'Error occured on obtaining ' + newImage.src;
-				delete preload.images[imageID];
-				delete newImage;
-				loadErrors++;
-				log(message, true);
-				if (cadv.system.stoponerror) {
-					error(message);
-				}
-			};
-			newImage.src = preload.images[imageID];
-			//*/
-			
-			////
-			/* WIP
-			var request = new XMLHttpRequest();
-			request.open('GET', imageURL, true);
-			request.responseType = 'arraybuffer';
-			request.onload = function(eventObj) {
-				var imageBlob = new Blob([this.response]);
+			if (noLocalStorage) {
 				var newImage = new Image();
-				newImage.src = URL.createObjectURL(imageBlob);
+				newImage.src = imageURL;
 				resources.images[imageID] = newImage;
-				log(imageURL + ' loaded!');
+				log(imageID + ' loaded from storage!');
+			} else {
+				var request = new XMLHttpRequest();
+				request.open('GET', imageURL, true);
+				request.responseType = 'arraybuffer';
+				request.onload = function(eventObj) {
+					var imageBlob = new Blob([this.response]);
+					var newImage = new Image();
+					newImage.src = URL.createObjectURL(imageBlob);
+					resources.images[imageID] = newImage;
+					log(imageURL + ' loaded!');
+					
+					if (noLocalStorage !== true) {
+						var arrBuffer = new Uint8Array(this.response);
+						var i = arrBuffer.length;
+						var binaryString = new Array(i);
+						while (i--) {
+							binaryString[i] = String.fromCharCode(arrBuffer[i]);
+						}
+						var data = binaryString.join('');
+						var base64 = btoa(data);
+						var dataURL = 'data:image/jpeg;base64,' + base64;
+						
+						var compressed = LZString.compress(dataURL);
+						storeToLocalStorage(imageID, compressed);
+					}
+				};
+				request.onerror = function() {
+					var message = imageURL + ' error! (Request)';
+					loadErrors++;
+					log(message);
+					if (cadv.system.stoponerror) {
+						error(message);
+					}
+				};
+				/* WIP
+				request.onprogress = function(eventObj){
+					if(eventObj.lengthComputable) {
+						// var percentComplete = eventObj.loaded / eventObj.total;
+						// do something with this
+					}
+				};
+				//*/
 				
-				if (noLocalStorage !== true) {
-					var compressed = LZString.compress(newImage.src);
-					storeToLocalStorage(imageID, compressed);
-				}
-			};
-			request.onerror = function() {
-				var message = imageURL + ' error! (Request)';
-				loadErrors++;
-				log(message);
-				if (cadv.system.stoponerror) {
-					error(message);
-				}
-			};
-			/* WIP
-			request.onprogress = function(eventObj){
-				if(eventObj.lengthComputable) {
-					// var percentComplete = eventObj.loaded / eventObj.total;
-					// do something with this
-				}
-			};
-			//*/
-			// request.send();
-			//*/
+				request.send();
+			}
 		}
 		
 		for (var imageId in preload.images) {
@@ -417,7 +400,7 @@ cadv.startPreloadVideos = function() {
 	// TODO: Check browser codec support?
 	
 	if (!$.isEmptyObject(preload.videos)) {
-		log(Object.keys(preload.videos).length);
+		log('Total of preload videos: ' + Object.keys(preload.videos).length);
 		
 		function loadVideo(videoId, videoFileUrl) {
 			var request = new XMLHttpRequest();
@@ -425,7 +408,7 @@ cadv.startPreloadVideos = function() {
 			request.responseType = 'arraybuffer';
 			request.onload = function(eventObj) {
 				var videoBlob = new Blob([eventObj.target.response], {type: 'video/webm'}); // TODO: Dynamically?
-				resources.video[videoId] = URL.createObjectURL(videoBlob);
+				resources.videos[videoId] = URL.createObjectURL(videoBlob);
 				log(videoFileUrl + ' loaded!');
 			};
 			request.onerror = function() {
