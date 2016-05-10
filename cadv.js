@@ -227,6 +227,50 @@ var resources = {
 	'videos' : {}
 };
 
+////////////////////
+// WIP
+
+cadv.addPreloadResource = function(resourceType, resourceID, resourceURL) {
+	switch(resourceType) {
+		case 'image':
+			preload.images[resourceID] = resourceURL;
+			break;
+		case 'audio':
+			preload.audios[resourceID] = resourceURL;
+			break;
+		case 'video':
+			preload.videos[resourceID] = resourceURL;
+			break;
+		default:
+			var message = resourceType + ' is not a valid resource type!';
+			log(message);
+			if (cadv.system.stoponerror) {
+				error(message);
+			}
+			break;
+	}
+	log(resourceURL + ' is added to preload list!');
+};
+
+cadv.startPreloadResources() = function() {
+	for (var resourceType in preload) {
+		if (!$.isEmptyObject(preload[resourceType])) {
+			log('Total of preload ' + resourceType + ': ' + Object.keys(preload.images).length);
+			
+			/*
+			for (var resourceID in preload[resourceType]) {
+				// Load Resource
+			}
+			//*/
+			
+		} else {
+			log('Preload list of ' + resourceType + ' is empty!');
+		}
+	}
+};
+////////////////////
+
+
 /**
  * Add image source to preload list
  * 
