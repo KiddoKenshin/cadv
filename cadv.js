@@ -126,6 +126,122 @@ function clearLocalStorage() {
 	sessionStorage.clear();
 }
 
+////////////////////
+// Indexed DB WIP
+////////////////////
+var iDB;
+function initDB() {
+	iDB = null;
+	if (!window.indexedDB) {
+		log('Indexed DB not available');
+		return;
+	}
+	
+	var dbRequest = indexedDB.open('CADV_DB', 1); // Doesn't work in FireFox during Private Mode.
+	dbRequest.onupgradeneeded = function(event) {
+		// createObjectStore only works in OnUpgradeNeeded
+		log('Initializing DB...');
+		iDB = dbRequest.result;
+		if(!iDB.objectStoreNames.contains('imageStorage')) {
+			iDB.createObjectStore('imageStorage');
+			log('imageStorage Created');
+		}
+		if(!iDB.objectStoreNames.contains('audioStorage')) {
+			iDB.createObjectStore('audioStorage');
+			log('audioStorage Created');
+		}
+		if(!iDB.objectStoreNames.contains('videoStorage')) {
+			iDB.createObjectStore('videoStorage');
+			log('videoStorage Created');
+		}
+	};
+	dbRequest.onsuccess = function(event) {
+		iDB = dbRequest.result;
+		log('DB Opened!');
+	};
+	dbRequest.onerror = function(event) {
+		log('DB Failed!');
+	};
+}
+initDB();
+
+function storeToIndexedDB(resourceType, uid, dataObject) {
+	if (iDB == null) {
+		log('iDB not available');
+		return;
+	}
+	
+	var useStorage = resourceType + 'Storage';
+	var dbTransactions = iDB.transaction([useStorage], 'readwrite');
+	var dbStorage = dbTransactions.objectStore(useStorage);
+	var storeRequest = dbStorage.put(dataObject, uid);
+	storeRequest.onsuccess = function(event) {
+		log(uid + '(' + resourceType + ') stored.');
+	};
+	storeRequest.onerror = function(event) {
+		log(uid + '(' + resourceType + ') error while put into DB.');
+	};
+}
+
+function getFromIndexedDB(resourceType, uid, callback) {
+	if (iDB == null) {
+		log('iDB not available');
+		callback(null);
+		return;
+	}
+	
+	var useStorage = resourceType + 'Storage';
+	var dbTransactions = iDB.transaction([useStorage], 'readwrite');
+	var dbStorage = dbTransactions.objectStore(useStorage);
+	var storeRequest = dbStorage.get(uid);
+	storeRequest.onsuccess = function(event) {
+		log(uid + '(' + resourceType + ') loaded.');
+		callback(storeRequest.result);
+	};
+	storeRequest.onerror = function(event) {
+		log(uid + '(' + resourceType + ') failed on retrieving.');
+		callback(null);
+	};
+}
+
+function removeFromIndexedDB(resourceType, uid) {
+	if (iDB == null) {
+		log('iDB not available');
+		return;
+	}
+	
+	var useStorage = resourceType + 'Storage';
+	var dbTransactions = iDB.transaction([useStorage], 'readonly');
+	var dbStorage = dbTransactions.objectStore(useStorage);
+	var storeRequest = dbStorage.delete(uid);
+	storeRequest.onsuccess = function(event) {
+		log(uid + '(' + resourceType + ') deleted.');
+	};
+	storeRequest.onerror = function(event) {
+		log(uid + '(' + resourceType + ') error on deleting.');
+	};
+}
+
+function clearIndexedDB() {
+	if (iDB == null) {
+		log('iDB not available');
+		return;
+	}
+	
+	var dbRequest = indexedDB.deleteDatabase('CADV_DB');
+	dbRequest.onsuccess = function () {
+		log('DB deleted successfully');
+		initDB();
+	};
+	dbRequest.onerror = function () {
+		log('Unable to delete DB');
+	};
+	dbRequest.onblocked = function () {
+		log('Unable to delete DB due to the operation being blocked');
+	};
+}
+
+
 /** 
  * Detects mobile device via user agent.
  * 
@@ -222,9 +338,9 @@ var preload = {
 	'videos' : {}
 };
 var resources = {
-	'images' : {},
-	'audios' : {},
-	'videos' : {}
+	'images' : {}, // Image (From Blob)
+	'audios' : {}, // AudioBuffer (From ArrayBuffer)
+	'videos' : {}  // Video (From Blob)
 };
 
 ////////////////////
@@ -252,7 +368,7 @@ cadv.addPreloadResource = function(resourceType, resourceID, resourceURL) {
 	log(resourceURL + ' is added to preload list!');
 };
 
-cadv.startPreloadResources() = function() {
+cadv.startPreloadResources = function() {
 	for (var resourceType in preload) {
 		if (!$.isEmptyObject(preload[resourceType])) {
 			log('Total of preload ' + resourceType + ': ' + Object.keys(preload.images).length);
@@ -451,7 +567,7 @@ cadv.startPreloadVideos = function() {
 			request.open('GET', videoFileUrl, true);
 			request.responseType = 'arraybuffer';
 			request.onload = function(eventObj) {
-				var videoBlob = new Blob([eventObj.target.response], {type: 'video/webm'}); // TODO: Dynamically?
+				var videoBlob = new Blob([this.response], {type: 'video/webm'}); // TODO: Dynamically?
 				resources.videos[videoId] = URL.createObjectURL(videoBlob);
 				log(videoFileUrl + ' loaded!');
 			};
