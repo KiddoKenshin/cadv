@@ -305,6 +305,9 @@ cadv.initAudio = function() {
 				cadv.audio[type] = cadv.audio.context.createGain();
 				cadv.audio[type].gain.value = cadv.system[type + 'volume'];
 				cadv.audio[type].connect(cadv.audio['master']);
+				
+				cadv.audio[type + 'out'] = cadv.audio.context.createBufferSource();
+				cadv.audio[type + 'out'].connect(cadv.audio[type]);
 			}
 			
 			return true;
@@ -317,11 +320,64 @@ cadv.initAudio = function() {
 };
 
 // Work In Progress
-cadv.playAudio = function(audioId) {
-	var audioOutput = cadv.audio.context.createBufferSource();
-	audioOutput.buffer = buffer;
-	audioOutput.connect(cadv.audio.master);
-	audioOutput.start(0);
+cadv.playAudio = function(audioType, audioId, isLoop) {
+	if (isLoop == undefined) {
+		isLoop = false;
+	}
+	
+	// BGM is always loop
+	if (audioType == 'bgm') {
+		isLoop = true;
+	}
+	
+	if (audioType == 'sfx' && !isLoop) {
+		// Non-loop SFX is plainly disposable
+		var audioOutput = cadv.audio.context.createBufferSource();
+		audioOutput.buffer = resources.audios[audioId];
+		audioOutput.connect(cadv.audio.sfx);
+		audioOutput.start(0);
+	} else {
+		cadv.audio[audioType + 'out'].buffer = resources.audios[audioId];
+		cadv.audio[audioType + 'out'].loop = isLoop;
+		cadv.audio[audioType + 'out'].start(0);
+	}
+};
+
+cadv.playCrossfadeBGM = function(audioId, crossfadeDuration) {
+	var bgmVolume = cadv.audio.context.createGain();
+	bgmVolume.gain.value = 0;
+	bgmVolume.connect(cadv.audio['master']);
+	
+	var bgmOutput = cadv.audio.context.createBufferSource();
+	bgmOutput.buffer = resources.audios[audioId];
+	bgmOutput.connect(bgmVolume);
+	bgmOutput.start(0);
+	
+	log('Crossfade begin!');
+	$.Animation(bgmVolume.gain, {
+		value: cadv.system['bgmvolume']
+	}, {
+		duration: crossfadeDuration,
+		easing: 'linear'
+	});
+	
+	$.Animation(cadv.audio.bgm.gain, {
+		value: 0
+	}, {
+		duration: crossfadeDuration,
+		easing: 'linear'
+	}).done(function() {
+		cadv.audio.bgmout.stop();
+		delete cadv.audio.bgm, cadv.audio.bgmout;
+		
+		cadv.audio.bgm = bgmVolume;
+		cadv.audio.bgmout = bgmOutput;
+		log('Crossfade complete!');
+	});
+};
+
+cadv.stopAudio = function(audioType) {
+	cadv.audio[audioType + 'out'].stop();
 };
 
 // CSS for text output
