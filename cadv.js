@@ -71,65 +71,16 @@ function getYmdHis() {
 	return ymdhis;
 }
 
-/**
- * Stores data to Web Storage for later usage. (Session Storage)
- * 
- * @param string uid | unique id to be use later
- * @param string dataString | the data to be store
- * @returns boolean
- */
-function storeToLocalStorage(uid, dataString) {
-	if (sessionStorage == undefined) {
-		return false;
-	}
-	
-	try {
-		sessionStorage.setItem(uid, dataString);
-		return true;
-	} catch (error) {
-		log(error);
-		log('Ignoring errors. (HTML5 LocalStorage Not available!)');
-		return false;
-	}
-}
-
-/**
- * Retrieves data from Web Storage
- * 
- * @param string uid | unique id to claim data
- * @returns string
- */
-function getFromLocalStorage(uid) {
-	var data = null;
-	if (sessionStorage != undefined) {
-		data = sessionStorage.getItem(uid);
-	}
-	return data;
-}
-
-/**
- * Remove data from WebStorage
- * 
- * @param string uid | unique id to remove
- * @return void
- */
-function removeFromLocalStorage(uid) {
-	sessionStorage.removeItem(uid);
-}
-
-/**
- * Clear all Web Storage (Session Storage)
- * 
- * @return void
- */
-function clearLocalStorage() {
-	sessionStorage.clear();
-}
-
 ////////////////////
-// Indexed DB WIP
+// Indexed DB
 ////////////////////
 var iDB;
+var iDBInit = false;
+/**
+ * Initialize Indexed DB to be used as local content manager. (Async)
+ * 
+ * @returns void
+ */
 function initDB() {
 	iDB = null;
 	if (!window.indexedDB) {
@@ -157,21 +108,30 @@ function initDB() {
 	};
 	dbRequest.onsuccess = function(event) {
 		iDB = dbRequest.result;
+		iDBInit = true;
 		log('DB Opened!');
 	};
 	dbRequest.onerror = function(event) {
+		iDBInit = true;
 		log('DB Failed!');
 	};
 }
-initDB();
 
+/**
+ * Stores data to Indexed DB for later usage. (Async)
+ * 
+ * @param string resourceType | images, audios, videos
+ * @param string uid | unique id to be use later
+ * @param ArrayBuufer/Blob dataObject | the data to be store
+ * @returns void
+ */
 function storeToIndexedDB(resourceType, uid, dataObject) {
 	if (iDB == null) {
 		log('iDB not available');
 		return;
 	}
 	
-	var useStorage = resourceType + 'Storage';
+	var useStorage = resourceType.substring(0, resourceType.length - 1) + 'Storage';
 	var dbTransactions = iDB.transaction([useStorage], 'readwrite');
 	var dbStorage = dbTransactions.objectStore(useStorage);
 	var storeRequest = dbStorage.put(dataObject, uid);
@@ -183,27 +143,42 @@ function storeToIndexedDB(resourceType, uid, dataObject) {
 	};
 }
 
+/**
+ * Retrieves data from Indexed DB. (Async)
+ * 
+ * @param string resourceType | images, audios, videos
+ * @param string uid | unique id to be use later
+ * @param function callback | refer to storageCallback in cadv.startPreloadResources
+ * @returns void
+ */
 function getFromIndexedDB(resourceType, uid, callback) {
 	if (iDB == null) {
 		log('iDB not available');
-		callback(null);
+		callback(resourceType, uid, null);
 		return;
 	}
 	
-	var useStorage = resourceType + 'Storage';
+	var useStorage = resourceType.substring(0, resourceType.length - 1) + 'Storage';
 	var dbTransactions = iDB.transaction([useStorage], 'readwrite');
 	var dbStorage = dbTransactions.objectStore(useStorage);
 	var storeRequest = dbStorage.get(uid);
 	storeRequest.onsuccess = function(event) {
 		log(uid + '(' + resourceType + ') loaded.');
-		callback(storeRequest.result);
+		callback(resourceType, uid, storeRequest.result);
 	};
 	storeRequest.onerror = function(event) {
 		log(uid + '(' + resourceType + ') failed on retrieving.');
-		callback(null);
+		callback(resourceType, uid, null);
 	};
 }
 
+/**
+ * Remove data from Indexed DB. (Async)
+ * 
+ * @param string resourceType | images, audios, videos
+ * @param string uid | unique id for data to be removed
+ * @return void
+ */
 function removeFromIndexedDB(resourceType, uid) {
 	if (iDB == null) {
 		log('iDB not available');
@@ -222,14 +197,15 @@ function removeFromIndexedDB(resourceType, uid) {
 	};
 }
 
+/**
+ * Clear all Indexed DB
+ * 
+ * @return void
+ */
 function clearIndexedDB() {
-	if (iDB == null) {
-		log('iDB not available');
-		return;
-	}
-	
 	var dbRequest = indexedDB.deleteDatabase('CADV_DB');
 	dbRequest.onsuccess = function () {
+		iDBInit = false;
 		log('DB deleted successfully');
 		initDB();
 	};
@@ -342,10 +318,20 @@ var resources = {
 	'audios' : {}, // AudioBuffer (From ArrayBuffer)
 	'videos' : {}  // Video (From Blob)
 };
+var loadIndicator = {
+	'images' : {}, // Image (From Blob)
+	'audios' : {}, // AudioBuffer (From ArrayBuffer)
+	'videos' : {}  // Video (From Blob)
+};
 
-////////////////////
-// WIP
-
+/**
+ * Add resource to preload list
+ * 
+ * @param string resourceType | image, audio, video
+ * @param string resourceID | ID to be use later on manipulating them
+ * @param string resourceURL | Source of Resource
+ * @return void
+ */
 cadv.addPreloadResource = function(resourceType, resourceID, resourceURL) {
 	switch(resourceType) {
 		case 'image':
@@ -368,26 +354,142 @@ cadv.addPreloadResource = function(resourceType, resourceID, resourceURL) {
 	log(resourceURL + ' is added to preload list!');
 };
 
+/**
+ * Start the resource loading.
+ * 
+ * @return void
+ */
+cadv.startedPreload = false;
 cadv.startPreloadResources = function() {
-	for (var resourceType in preload) {
-		if (!$.isEmptyObject(preload[resourceType])) {
-			log('Total of preload ' + resourceType + ': ' + Object.keys(preload.images).length);
-			
-			/*
-			for (var resourceID in preload[resourceType]) {
-				// Load Resource
-			}
-			//*/
-			
+	
+	if (cadv.startedPreload) {
+		log('Preload started');
+		return;
+	}
+	cadv.startedPreload = true;
+	
+	initDB();
+	var dbInitTimer = setInterval(function() {
+		if (iDBInit) {
+			clearInterval(dbInitTimer);
+			afterInit();
+		}
+	}, 100);
+	
+	function storageCallback(resourceType, uid, resourceData) {
+		if (resourceData != null) {
+			assignToResource(resourceType, uid, resourceData);
 		} else {
-			log('Preload list of ' + resourceType + ' is empty!');
+			loadResourceFromXHR(resourceType, uid, preload[resourceType][uid]);
 		}
 	}
+	
+	function loadResourceFromXHR(resourceType, uid, resourceUrl) {
+		var xhRequest = new XMLHttpRequest();
+		xhRequest.open('GET', resourceUrl, true);
+		xhRequest.responseType = 'arraybuffer';
+		xhRequest.onload = function(eventObj) {
+			var rawArrayBuffer = this.response;
+			var contentBlob = new Blob([rawArrayBuffer]);
+			
+			var useData = contentBlob;
+			if (resourceType == 'audios') {
+				useData = rawArrayBuffer;
+			}
+			storeToIndexedDB(resourceType, uid, useData);
+			assignToResource(resourceType, uid, useData);
+			
+			log(resourceUrl + ' loaded!');
+		};
+		xhRequest.onerror = function(eventObj) {
+			var message = resourceUrl + ' error! (Request)';
+			loadErrors++;
+			log(message);
+			if (cadv.system.stoponerror) {
+				error(message);
+			}
+		};
+		xhRequest.onprogress = function(eventObj){
+			if(eventObj.lengthComputable) {
+				// var percentComplete = eventObj.loaded / eventObj.total;
+				// do something with this
+			}
+		};
+		xhRequest.send();
+	}
+	
+	function assignToResource(resourceType, uid, resourceData) {
+		switch(resourceType) {
+			case 'images':
+				var newImage = new Image();
+				newImage.src = URL.createObjectURL(resourceData);
+				resources.images[uid] = newImage;
+				break;
+			case 'videos':
+				var newVideo = document.createElement('video');
+				newVideo.src = URL.createObjectURL(resourceData);
+				resources.videos[uid] = newVideo;
+				break;
+			case 'audios':
+				cadv.audio.context.decodeAudioData(resourceData, function(buffer) {
+					resources.audios[uid] = buffer;
+					log(uid + '(' + resourceType + ') decoded!');
+				}, function() {
+					// Error Callback
+					var message = uid + '(' + resourceType + ') error! (Decode)';
+					loadErrors++;
+					log(message);
+					if (cadv.system.stoponerror) {
+						error(message);
+					}
+				});
+				break;
+		}
+	}
+	
+	function afterInit() {
+		// Init Audio related in Preload
+		if (cadv.system.useaudio) {
+			if (typeof(AudioContext) != 'undefined') {
+				// Web Audio API is all unprefixed
+				cadv.audio.context = new AudioContext();
+			} else {
+				// FORCE to switch back
+				cadv.system.useaudio = false;
+				log('Unable to create audio context. Web Audio API might be not available.');
+				log('No audio will be loaded.');
+				
+				// Empty Audio list
+				preload.audios = {};
+			}
+		}
+		
+		for (var resourceType in preload) {
+			if (!$.isEmptyObject(preload[resourceType])) {
+				
+				if (resourceType == 'audios' && !cadv.system.useaudio) {
+					log('Skipping audio list. (UseAudio disabled)');
+					continue;
+				}
+				
+				log('Total of preload ' + resourceType + ': ' + Object.keys(preload[resourceType]).length);
+				
+				for (var resourceID in preload[resourceType]) {
+					// Load Resource
+					// Attempt to retrieve from Storage, load from XHR when empty
+					getFromIndexedDB(resourceType, resourceID, storageCallback);
+				}
+				
+			} else {
+				log('Preload list of ' + resourceType + ' is empty!');
+			}
+		}
+	}
+	
 };
-////////////////////
-
 
 /**
+ * (Deprecated!)
  * Add image source to preload list
  * 
  * @param string imageID | ID to be use later on manipulating them
@@ -395,84 +497,23 @@ cadv.startPreloadResources = function() {
  * @return void
  */
 cadv.addPreloadImage = function(imageID, imageURL) {
-	preload.images[imageID] = imageURL;
+	log('addPreloadImage is Deprecated, will be removed soon');
+	cadv.addPreloadResource('image', imageID, imageURL);
 };
 
 /**
+ * (Deprecated!)
  * Start the resource(image) loading.
  * 
  * @return void
  */
 cadv.startPreloadImages = function() {
-	if (!$.isEmptyObject(preload.images)) {
-		log('Total of preload images: ' + Object.keys(preload.images).length);
-		
-		function loadToStorage(imageID, imageURL, noLocalStorage) {
-			if (noLocalStorage) {
-				var newImage = new Image();
-				newImage.src = imageURL;
-				resources.images[imageID] = newImage;
-				log(imageID + ' loaded from storage!');
-			} else {
-				var request = new XMLHttpRequest();
-				request.open('GET', imageURL, true);
-				request.responseType = 'arraybuffer';
-				request.onload = function(eventObj) {
-					var imageBlob = new Blob([this.response]);
-					var newImage = new Image();
-					newImage.src = URL.createObjectURL(imageBlob);
-					resources.images[imageID] = newImage;
-					log(imageURL + ' loaded!');
-					
-					if (noLocalStorage !== true) {
-						var arrBuffer = new Uint8Array(this.response);
-						var i = arrBuffer.length;
-						var binaryString = new Array(i);
-						while (i--) {
-							binaryString[i] = String.fromCharCode(arrBuffer[i]);
-						}
-						var data = binaryString.join('');
-						var base64 = btoa(data);
-						var dataURL = 'data:image/jpeg;base64,' + base64;
-						
-						var compressed = LZString.compress(dataURL);
-						storeToLocalStorage(imageID, compressed);
-					}
-				};
-				request.onerror = function() {
-					var message = imageURL + ' error! (Request)';
-					loadErrors++;
-					log(message);
-					if (cadv.system.stoponerror) {
-						error(message);
-					}
-				};
-				/* WIP
-				request.onprogress = function(eventObj){
-					if(eventObj.lengthComputable) {
-						// var percentComplete = eventObj.loaded / eventObj.total;
-						// do something with this
-					}
-				};
-				//*/
-				
-				request.send();
-			}
-		}
-		
-		for (var imageId in preload.images) {
-			var fromLocalStorage = getFromLocalStorage(imageId);
-			if (fromLocalStorage !== null) {
-				var decompressed = LZString.decompress(fromLocalStorage);
-				loadToStorage(imageId, decompressed, true);
-			} else {
-				loadToStorage(imageId, preload.images[imageId]);
-			}
-		}
-	}
+	log('startPreloadImages is Deprecated, will be removed soon');
+	cadv.startPreloadResources();
 };
 
 /**
+ * (Deprecated!)
  * Add audio source to preload list
  * 
  * @param string audioID | ID to be use later on manipulating them
@@ -480,66 +521,23 @@ cadv.startPreloadImages = function() {
  * @return void
  */
 cadv.addPreloadAudio = function(audioID, audioURL) {
-	if (!cadv.system.useaudio) return;
-	preload.audios[audioID] = audioURL;
+	log('addPreloadAudio is Deprecated, will be removed soon');
+	cadv.addPreloadResource('audio', audioID, audioURL);
 };
 
 /**
+ * (Deprecated!)
  * Start the resource(audio) loading.
  * 
  * @return void
  */
 cadv.startPreloadAudios = function() {
-	if (!cadv.system.useaudio) return;
-	
-	if (!$.isEmptyObject(preload.audios)) {
-		log(Object.keys(preload.audios).length);
-		
-		function loadAudio(audioId, audioFileUrl) {
-			var request = new XMLHttpRequest();
-			request.open('GET', audioFileUrl, true);
-			request.responseType = 'arraybuffer';
-			request.onload = function() {
-				cadv.audio.context.decodeAudioData(request.response, function(buffer) {
-					resources.audios[audioId] = buffer;
-					log(audioFileUrl + ' loaded!');
-				}, function() {
-					// Error Callback
-					var message = audioFileUrl + ' error! (Decode)';
-					loadErrors++;
-					log(message);
-					if (cadv.system.stoponerror) {
-						error(message);
-					}
-				});
-			};
-			request.onerror = function() {
-				var message = audioFileUrl + ' error! (Request)';
-				loadErrors++;
-				log(message);
-				if (cadv.system.stoponerror) {
-					error(message);
-				}
-			};
-			/* WIP
-			request.onprogress = function(eventObj){
-				if(eventObj.lengthComputable) {
-					// var percentComplete = eventObj.loaded / eventObj.total;
-					// do something with this
-				}
-			};
-			//*/
-			request.send();
-		}
-		
-		for (var audioId in preload.audios) {
-			loadAudio(audioId, preload.audios[audioId]);
-		}
-		
-	}
+	log('startPreloadAudios is Deprecated, will be removed soon');
+	cadv.startPreloadResources();
 };
 
 /**
+ * (Deprecated!)
  * Add video source to preload list
  * 
  * @param string videoID | ID to be use later on manipulating them
@@ -547,74 +545,24 @@ cadv.startPreloadAudios = function() {
  * @return void
  */
 cadv.addPreloadVideo = function(videoID, videoURL) {
-	// TODO: Check browser codec support?
-	preload.videos[videoID] = videoURL;
+	log('addPreloadVideo is Deprecated, will be removed soon');
+	cadv.addPreloadResource('video', videoID, videoURL);
 };
 
 /**
+ * (Deprecated!)
  * Start the resource(video) loading.
  * 
  * @return void
  */
 cadv.startPreloadVideos = function() {
-	// TODO: Check browser codec support?
-	
-	if (!$.isEmptyObject(preload.videos)) {
-		log('Total of preload videos: ' + Object.keys(preload.videos).length);
-		
-		function loadVideo(videoId, videoFileUrl) {
-			var request = new XMLHttpRequest();
-			request.open('GET', videoFileUrl, true);
-			request.responseType = 'arraybuffer';
-			request.onload = function(eventObj) {
-				var videoBlob = new Blob([this.response], {type: 'video/webm'}); // TODO: Dynamically?
-				resources.videos[videoId] = URL.createObjectURL(videoBlob);
-				log(videoFileUrl + ' loaded!');
-			};
-			request.onerror = function() {
-				var message = videoFileUrl + ' error! (Request)';
-				loadErrors++;
-				log(message);
-				if (cadv.system.stoponerror) {
-					error(message);
-				}
-			};
-			/* WIP
-			request.onprogress = function(eventObj){
-				if(eventObj.lengthComputable) {
-					// var percentComplete = eventObj.loaded / eventObj.total;
-					// do something with this
-				}
-			};
-			//*/
-			request.send();
-		}
-		
-		for (var videoId in preload.videos) {
-			loadVideo(videoId, preload.videos[videoId]);
-		}
-		
-	}
+	log('startPreloadVideos is Deprecated, will be removed soon');
+	cadv.startPreloadResources();
 };
 
 cadv.startPreload = function() {
-	if (cadv.system.useaudio) {
-		if (typeof(AudioContext) != 'undefined') {
-			// Web Audio API is all unprefixed
-			cadv.audio.context = AudioContext();
-		} else {
-			// FORCE to switch back
-			cadv.system.useaudio = false;
-			log('Unable to create audio context. Web Audio API might be not available.');
-			
-			// Empty Audio list
-			preload.audios = {};
-		}
-	}
-	
-	cadv.startPreloadImages();
-	// cadv.startPreloadAudios();
-	// cadv.startPreloadVideos();
+	log('startPreload is Deprecated, will be removed soon');
+	cadv.startPreloadResources();
 };
 
 // INGAME Draw mechanics (Core)
@@ -971,9 +919,9 @@ cadv.resetCanvas = function() {
 };
 
 cadv.setPosition = function() {
-	if (detailObjects.messagewindow == undefined) {
+	if (detailObjects.messagewindow.base == undefined) {
 		log('Message Window not ready!');
-		setTimeout(cadv.setPosition, 500);
+		// setTimeout(cadv.setPosition, 1000);
 		return;
 	}
 	
@@ -1039,7 +987,7 @@ cadv.init = function(callback) {
 	$('head').prepend('<style>*{padding:0;margin:0;}::-webkit-scrollbar{display: none;}canvas{vertical-align:top;}</style>');
 	
 	var timer = setInterval(function() {
-		if ((Object.keys(preload.images).length + Object.keys(preload.audios).length - loadErrors) == (Object.keys(resources.images).length + Object.keys(resources.audios).length)) {
+		if ((Object.keys(preload.images).length + Object.keys(preload.audios).length + Object.keys(preload.videos).length - loadErrors) == (Object.keys(resources.images).length + Object.keys(resources.audios).length + Object.keys(resources.videos).length)) {
 			clearTimeout(timer);
 			
 			// Create Text Output
