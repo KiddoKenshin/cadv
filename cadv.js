@@ -22,16 +22,20 @@
  * Suggests WebM Vorbis, or WebM Opus.
  * Please check the browser's codec support.
  * 
+ * Video format:
+ * Suggests WebM-VP9.
+ * Please check the browser's codec support.
+ * 
  * Bundled Library / Plugin:
  * jQuery easing
  * ScreenFull
- * LZ-String
  * 
  * @author KiddoKenshin @ K2-R&D.com
  * @since 2012/04/01, RE: 2013/01/17, TRE: 2013/12/13, C-ADV: 2014/05/26
  * @version -WORK IN PROGRESS-
  * 
  * Current Progress: Audio Related
+ * TODO: Split CADV functions to more obvious call style? Example: cadv.public.functionName, cadv.private.functionName
  * 
  * Rough DEMO using CADV: http://furi2purei.com/index.min.html
 //*/
@@ -74,6 +78,7 @@ function getYmdHis() {
 ////////////////////
 // Indexed DB
 ////////////////////
+// TODO: Move into CADV object as it only uses in preload?
 var iDB;
 var iDBInit = false;
 /**
@@ -261,6 +266,10 @@ function error(message) {
 //# CADV Related #//
 var cadv = new Object;
 
+// WIP
+cadv.pulic = {};
+cadv.private = {};
+
 // System Settings, can be modify to suit user's needs
 cadv.system = {
 	'debug' : false, // Debug mode
@@ -350,6 +359,7 @@ cadv.playCrossfadeBGM = function(audioId, crossfadeDuration) {
 	
 	var bgmOutput = cadv.audio.context.createBufferSource();
 	bgmOutput.buffer = resources.audios[audioId];
+	bgmOutput.loop = true;
 	bgmOutput.connect(bgmVolume);
 	bgmOutput.start(0);
 	
