@@ -90,6 +90,7 @@ function initDB() {
 	iDB = null;
 	if (!window.indexedDB) {
 		log('Indexed DB not available');
+		iDBInit = true;
 		return;
 	}
 	
