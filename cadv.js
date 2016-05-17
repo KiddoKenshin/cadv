@@ -9,7 +9,7 @@
  * 
  * Requirements:
  * jQuery 2.x 
- * (For $.Animation, will be replaced one I figured how to use jQuery easing with alternate solution)
+ * (For $.Animation and Selector, will be replaced one I figured out an alternate solution)
  * 
  * CryptoJS
  * (For MD5 encryption, might required for generating keys for server requests)
@@ -408,6 +408,7 @@ cadv.textOut = {
 cadv.choiceBox = {
 	'width' : '240px',
 	'height' : '48px',
+	'color' : '#111111',
 	'text-align' : 'center',
 	'line-height' : '48px',
 	'border' : 'solid 1px #999999',
@@ -415,6 +416,13 @@ cadv.choiceBox = {
 	'margin' : '12px 0 12px',
 	'cursor' : 'default',
 	'opacity' : '0'
+};
+
+cadv.choiceBoxHover = {
+	'font-size' : '1.125em',
+	'color' : '#666666',
+	'border' : 'solid 1px #7777FF',
+	'opacity' : '0.9'
 };
 
 // In game states, not to be overwritten by user.
@@ -1101,8 +1109,29 @@ cadv.init = function(callback) {
 	// Append Canvas to HTML Document(Body)
 	$('body').empty().append(canvas).css('background-color', cadv.system.defaultbgcolor);
 	
+	// CSS for textOut
+	var textOutCSS = '';
+	for (var key in cadv.textOut) {
+		textOutCSS += (key + ':' + cadv.textOut[key] + ';');
+	}
+	textOutCSS = 'div#textout{' + textOutCSS + '}';
+	
+	// CSS for choiceBox
+	var choiceBoxCSS = '';
+	for (var key in cadv.choiceBox) {
+		choiceBoxCSS += (key + ':' + cadv.choiceBox[key] + ';');
+	}
+	choiceBoxCSS = 'div.choice{' + choiceBoxCSS + '}';
+	
+	// CSS for choiceBoxHover
+	var choiceBoxHoverCSS = '';
+	for (var key in cadv.choiceBoxHover) {
+		choiceBoxHoverCSS += (key + ':' + cadv.choiceBoxHover[key] + ';');
+	}
+	choiceBoxHoverCSS = 'div.choice.hovered{' + choiceBoxHoverCSS + '}';
+	
 	// Default CSS settings for all browsers
-	$('head').prepend('<style>*{padding:0;margin:0;}::-webkit-scrollbar{display: none;}canvas{vertical-align:top;}.pointer{cursor:pointer;}</style>');
+	$('head').prepend('<style>*{padding:0;margin:0;}::-webkit-scrollbar{display: none;}canvas{vertical-align:top;}.pointer{cursor:pointer;}' + textOutCSS + choiceBoxCSS + choiceBoxHoverCSS + '</style>');
 	
 	var timer = setInterval(function() {
 		if ((Object.keys(preload.images).length + Object.keys(preload.audios).length + Object.keys(preload.videos).length - loadErrors) == (Object.keys(resources.images).length + Object.keys(resources.audios).length + Object.keys(resources.videos).length)) {
@@ -1111,10 +1140,6 @@ cadv.init = function(callback) {
 			// Create Text Output
 			var newDiv = document.createElement('div');
 			newDiv.id = 'textout';
-			newDiv.style.cssText = '';
-			for (var key in cadv.textOut) {
-				newDiv.style.cssText += (' ' + key + ': ' + cadv.textOut[key] + ';');
-			}
 			
 			$('body').append(newDiv);
 			cadv.system.textselector = $('div#textout');
