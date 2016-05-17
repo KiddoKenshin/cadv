@@ -401,7 +401,20 @@ cadv.textOut = {
 	'left' : '16px',
 	'top' : '16px',
 	'color' : '#FFFAFA',
-	'overflow' : 'visible'
+	'overflow' : 'visible',
+	'cursor' : 'default'
+};
+
+cadv.choiceBox = {
+	'width' : '240px',
+	'height' : '48px',
+	'text-align' : 'center',
+	'line-height' : '48px',
+	'border' : 'solid 1px #999999',
+	'border-radius' : '4px',
+	'margin' : '12px 0 12px',
+	'cursor' : 'default',
+	'opacity' : '0'
 };
 
 // In game states, not to be overwritten by user.
@@ -1089,7 +1102,7 @@ cadv.init = function(callback) {
 	$('body').empty().append(canvas).css('background-color', cadv.system.defaultbgcolor);
 	
 	// Default CSS settings for all browsers
-	$('head').prepend('<style>*{padding:0;margin:0;}::-webkit-scrollbar{display: none;}canvas{vertical-align:top;}</style>');
+	$('head').prepend('<style>*{padding:0;margin:0;}::-webkit-scrollbar{display: none;}canvas{vertical-align:top;}.pointer{cursor:pointer;}</style>');
 	
 	var timer = setInterval(function() {
 		if ((Object.keys(preload.images).length + Object.keys(preload.audios).length + Object.keys(preload.videos).length - loadErrors) == (Object.keys(resources.images).length + Object.keys(resources.audios).length + Object.keys(resources.videos).length)) {
@@ -1230,15 +1243,84 @@ cadv.textWriter = function(inputString) {
 	//*/
 };
 
+////////////////////
 // Event Listeners
-$(window).resize(function(e) {
-	e.preventDefault();
+////////////////////
+window.onresize = function(eventObj) {
+	eventObj.preventDefault(); // DOM2
 	if (cadv.system.autoscale) {
-		$(window).resize(cadv.performScaling);
+		cadv.performScaling();
 	}
-	
 	cadv.setPosition();
-});
+};
+
+window.onkeydown = function(eventObj) {
+	eventObj.preventDefault(); // DOM2
+	var keyLocation = eventObj.location;
+	var whichKey = eventObj.which;
+	
+	switch(whichKey) {
+		case 27:
+			// Escape: Main Menu
+			break;
+		case 13:
+			// Enter Key: Next Script, Decide
+			break;
+		case 32:
+			// Space: Show Hide Message & Window
+			break;
+		case 17:
+			if (keyLocation == KeyboardEvent.DOM_KEY_LOCATION_RIGHT) {
+				// Right Control: Skip mode
+			}
+			break;
+		case 38:
+			// Arrows(Up): Choose Selection
+			break;
+		case 40:
+			// Arrows(Down): Choose Selection
+			break;
+			
+			// TODO: Log Mode?
+			
+		default:
+			break;
+	}
+};
+
+window.onkeyup - function(eventObj) {
+	eventObj.preventDefault(); // DOM2
+	var keyLocation = eventObj.location;
+	var whichKey = eventObj.which;
+	
+	switch(whichKey) {
+		case 17:
+			if (keyLocation == KeyboardEvent.DOM_KEY_LOCATION_RIGHT) {
+				// Right Control: Disable Skip Mode
+			}
+			break;
+		default:
+			break;
+	}
+};
+
+window.onmousedown = function(eventObj) {
+	eventObj.preventDefault(); // DOM2
+	var whichKey = eventObj.which;
+	
+	switch(whichKey) {
+		case 1:
+			// Left Click: Next Script, Decide
+			break;
+		default:
+			break;
+	}
+};
+
+document.onselectstart = function() {
+	// Disable Text Highlight
+	return false;
+};
 
 // jQuery PLUGINs
 /*
