@@ -513,6 +513,7 @@ cadv.startPreloadResources = function() {
 	}
 	
 	function loadResourceFromXHR(resourceType, uid, resourceUrl) {
+		// Simple DRM 1, CORS policy apply to XHR in the new browsers.
 		var xhRequest = new XMLHttpRequest();
 		xhRequest.open('GET', resourceUrl, true);
 		xhRequest.responseType = 'arraybuffer';
@@ -543,6 +544,10 @@ cadv.startPreloadResources = function() {
 				// do something with this
 			}
 		};
+		
+		// Simple DRM 2, Only allow access with custom header
+		// TODO: Dynamic Header? More Header?
+		xhRequest.setRequestHeader('CADV-ENGINE', '1.0');
 		xhRequest.send();
 	}
 	
