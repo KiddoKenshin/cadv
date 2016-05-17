@@ -35,7 +35,7 @@
  * @version -WORK IN PROGRESS-
  * 
  * Current Progress: Audio Related
- * TODO: Split CADV functions to more obvious call style? Example: cadv.public.functionName, cadv.private.functionName
+ * TODO: Split CADV functions to more obvious call style? Example: cadv.public.functionName, cadv.private.functionName ?
  * 
  * Rough DEMO using CADV: http://furi2purei.com/index.min.html
 //*/
@@ -585,7 +585,8 @@ cadv.startPreloadResources = function() {
 			preload.audios = {};
 		}
 		
-		for (var resourceType in preload) {
+		for (var i = 0, keys = Object.keys(preload); i < keys.length; i++) {
+			var resourceType = keys[i];
 			if (!$.isEmptyObject(preload[resourceType])) {
 				
 				if (resourceType == 'audios' && !cadv.system.useaudio) {
@@ -595,9 +596,10 @@ cadv.startPreloadResources = function() {
 				
 				log('Total of preload ' + resourceType + ': ' + Object.keys(preload[resourceType]).length);
 				
-				for (var resourceID in preload[resourceType]) {
+				for (var j = 0, idKeys = Object.keys(preload[resourceType]); j < idKeys.length; j++) {
 					// Load Resource
 					// Attempt to retrieve from Storage, load from XHR when empty
+					var resourceID = idKeys[j];
 					getFromIndexedDB(resourceType, resourceID, storageCallback);
 				}
 				
@@ -722,68 +724,7 @@ cadv.performScaling = function() {
 	}
 };
 
-cadv.createImage = function(imageType, uid, imageUrl, extraParams) {
-	// UID Unique check
-	// var uid = MD5(imageUrl + '_' + getYmdHis());
-	var newImage = new Image();
-	newImage.onload = function() {
-		var newCanvas = document.createElement('canvas');
-		
-		var detailObject = {
-			'id' : uid, // Unique ID
-			'canvasObject' : newCanvas, // Canvas Object Holder
-			'imageObject' : newImage, // Image Object Holder
-			'type' : imageType, // 
-			'percentX' : '0',
-			'percentY' : '0',
-			'x' : '0',
-			'y' : '0',
-			'iWidth' : newImage.width,
-			'iHeight' : newImage.height,
-			'hFlip' : '1', // Horizontal Flip
-			'vFlip' : '1', // Vertical Flip
-			'opac' : '1', // Opacity
-			'originX' : '50%', // Transform Origin X
-			'originY' : '50%', // Transform Origin Y
-			'stretch' : false, // Enable stretch (Mainly used in BG)
-			'stretchScale' : '1', // Stretched Scale
-			'imageScale' : '1', // Image Scale
-			'rotate' : '0', // Rotation (Degree, 0 - 360)
-			'xSlice' : '1',
-			'ySlice' : '1',
-			'xCount' : '0',
-			'yCount' : '0'
-			// Default Offset?
-		};
-		
-		// Overwrites Parameter above if extra parameters were provided
-		if (extraParams != undefined) {
-			for (var key in extraParams) {
-				if (detailObject[key] != undefined) {
-					detailObject[key] = extraParams[key];
-				}
-			}
-		}
-		
-		if (extraParams != undefined && extraParams.parentId != undefined && extraParams.childType != undefined) {
-			if (detailObjects[imageType][extraParams.parentId] == undefined) {
-				throw new Error('No such parent!');
-			}
-			if (detailObjects[imageType][extraParams.parentId][extraParams.childType] == undefined) {
-				detailObjects[imageType][extraParams.parentId][extraParams.childType] = {};
-			}
-			detailObjects[imageType][extraParams.parentId][extraParams.childType] = detailObject;
-		} else {
-			detailObjects[imageType][uid] = detailObject;
-		}
-		
-	};
-	
-	newImage.src = imageUrl;
-	return uid;
-};
-
-cadv.createImageV2 = function(imageType, uid, imageID, extraParams) {
+cadv.createImage = function(imageType, uid, imageID, extraParams) {
 	var newImage = resources.images[imageID];
 	var newCanvas = document.createElement('canvas');
 	var detailObject = {
@@ -815,7 +756,8 @@ cadv.createImageV2 = function(imageType, uid, imageID, extraParams) {
 	
 	// Overwrites Parameter above if extra parameters were provided
 	if (extraParams != undefined) {
-		for (var key in extraParams) {
+		for (var i = 0, keys = Object.keys(extraParams); i < keys.length; i++) {
+			var key = keys[i];
 			if (detailObject[key] != undefined) {
 				detailObject[key] = extraParams[key];
 			}
@@ -836,6 +778,8 @@ cadv.createImageV2 = function(imageType, uid, imageID, extraParams) {
 	
 	return uid;
 };
+
+cadv.createImageV2 = cadv.createImage; // Deprecated, V2 replaced the old createImage
 
 cadv.drawDetail = function(detailObject, parentObject) {
 	if (oldObjects[detailObject.type][detailObject.id] == undefined) {
@@ -967,7 +911,8 @@ cadv.drawCanvas = function() {
 	// Explains canvasContext.drawImage (with 9 params) not working on iPhone but the one with 5 params does.
 	
 	// Background Layer
-	for (var uid in detailObjects.backgrounds) {
+	for (var i = 0, keys = Object.keys(detailObjects.backgrounds); i < keys.length; i++) {
+		var uid = keys[i];
 		if (isMobile()) {
 			// canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
 			canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, canvas.width, canvas.height);
@@ -978,7 +923,8 @@ cadv.drawCanvas = function() {
 		}
 	}
 	
-	for (var uid in detailObjects.characters) {
+	for (var i = 0, keys = Object.keys(detailObjects.characters); i < keys.length; i++) {
+		var uid = keys[i];
 		if (isMobile()) {
 			// canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
 			canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, canvas.width, canvas.height);
@@ -989,7 +935,8 @@ cadv.drawCanvas = function() {
 		}
 	}
 	
-	for (var uid in detailObjects.messagewindow) {
+	for (var i = 0, keys = Object.keys(detailObjects.messagewindow); i < keys.length; i++) {
+		var uid = keys[i];
 		if (isMobile()) {
 			// canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
 			canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, canvas.width, canvas.height);
@@ -999,22 +946,6 @@ cadv.drawCanvas = function() {
 			canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, cadv.system.width, cadv.system.height, 0, 0, cadv.system.width, cadv.system.height);
 		}
 	}
-	
-	// Text output
-	/*
-	if (detailObjects.messagewindow.base != undefined) {
-		// log(parseInt(cadv.textOut.left) + (detailObjects.messagewindow.base.x) + widthOffset);
-		$('div#textout').css('left', ((parseInt(cadv.textOut.left) + (detailObjects.messagewindow.base.x)) * cadv.system.screenscale) + widthOffset + 'px');
-		// $('div#textout').css('left', '1280px');
-		// $('div#textout').css('top', parseInt(cadv.textOut.top) + (detailObjects.messagewindow.base.y) + heightOffset + 'px');
-		$('div#textout').css('top', ((parseInt(cadv.textOut.top) + (detailObjects.messagewindow.base.y)) * cadv.system.screenscale) + heightOffset + 'px');
-		// $('div#textout').css('zoom', cadv.system.screenscale); // Need to renew every refresh
-		$('div#textout').css('transform', 'scale(' + cadv.system.screenscale + ')'); // Need to renew every refresh
-		$('div#textout').css('transform-origin', '0% 0%');
-		// log(((parseInt(cadv.textOut.top) + (detailObjects.messagewindow.base.y)) * cadv.system.screenscale));
-	}
-	//*/
-	
 	
 };
 
@@ -1111,21 +1042,24 @@ cadv.init = function(callback) {
 	
 	// CSS for textOut
 	var textOutCSS = '';
-	for (var key in cadv.textOut) {
+	for (var i = 0, keys = Object.keys(cadv.textOut); i < keys.length; i++) {
+		var key = keys[i];
 		textOutCSS += (key + ':' + cadv.textOut[key] + ';');
 	}
 	textOutCSS = 'div#textout{' + textOutCSS + '}';
 	
 	// CSS for choiceBox
 	var choiceBoxCSS = '';
-	for (var key in cadv.choiceBox) {
+	for (var i = 0, keys = Object.keys(cadv.choiceBox); i < keys.length; i++) {
+		var key = keys[i];
 		choiceBoxCSS += (key + ':' + cadv.choiceBox[key] + ';');
 	}
 	choiceBoxCSS = 'div.choice{' + choiceBoxCSS + '}';
 	
 	// CSS for choiceBoxHover
 	var choiceBoxHoverCSS = '';
-	for (var key in cadv.choiceBoxHover) {
+	for (var i = 0, keys = Object.keys(cadv.choiceBoxHover); i < keys.length; i++) {
+		var key = keys[i];
 		choiceBoxHoverCSS += (key + ':' + cadv.choiceBoxHover[key] + ';');
 	}
 	choiceBoxHoverCSS = 'div.choice.hovered{' + choiceBoxHoverCSS + '}';
