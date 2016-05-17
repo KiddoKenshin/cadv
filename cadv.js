@@ -395,7 +395,7 @@ cadv.stopAudio = function(audioType) {
 // (Text on Canvas do not recognize new lines)
 cadv.textOut = {
 	'position' : 'absolute',
-	'fontfamily' : 'Meiryo UI',
+	'font-family' : 'Meiryo UI, Hiragino Maru Gothic ProN',
 	'font-size' : '16px',
 	'line-height' : '16px',
 	'left' : '16px',
