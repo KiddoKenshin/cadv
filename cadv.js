@@ -1210,6 +1210,7 @@ cadv.textWriter = function(inputString) {
 ////////////////////
 // Event Listeners
 ////////////////////
+//<< KEYBOARD >>//
 window.onresize = function(eventObj) {
 	eventObj.preventDefault(); // DOM2
 	if (cadv.system.autoscale) {
@@ -1268,6 +1269,7 @@ window.onkeyup - function(eventObj) {
 	}
 };
 
+//<< MOUSE >>//
 window.onmousedown = function(eventObj) {
 	eventObj.preventDefault(); // DOM2
 	var whichKey = eventObj.which;
@@ -1285,6 +1287,26 @@ document.onselectstart = function() {
 	// Disable Text Highlight
 	return false;
 };
+
+//<< GAMEPAD API? >>//
+// Work In Progress
+var cadvGamepad = null;
+var gpLoopTimer;
+window.addEventListener('gamepadconnected', function(eventObj) {
+	cadvGamepad = eventObj.gamepad;
+	gpLoopTimer = setInterval(function() {
+		
+		for (var i = 0, max = cadvGamepad.buttons.length; i < max; i++) {
+			console.log('Key ' + i + ' state: ' + cadvGamepad.buttons[i].pressed);
+		}
+		
+	}, 1000);
+});
+
+window.addEventListener('gamepaddisconnected', function(eventObj) {
+	clearInterval(gpLoopTimer);
+	cadvGamepad = null;
+});
 
 // jQuery PLUGINs
 /*
