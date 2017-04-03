@@ -729,6 +729,13 @@ cadv.performScaling = function() {
 	}
 };
 
+cadv.stopScaling() = function() {
+	cadv.system.autoscale = false;
+	cadv.system.screenscale = 1.0;
+	canvas.width = cadv.system.width;
+	canvas.height = cadv.system.height;
+};
+
 cadv.createImage = function(imageType, uid, imageID, extraParams) {
 	var newImage = resources.images[imageID];
 	var newCanvas = document.createElement('canvas');
