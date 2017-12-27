@@ -1,1397 +1,205 @@
-/**!
- * CADV - HTML5 "C"anvas based "ADV"enture game engine. 
- * Just another Visual Novel game engine. 
- * Visual Novel games are consider as "Adventure" games in Japan.
- * 
- * The 4th generation of BADV.
- * CADV aims to use less CSS that was required in previous generations.
- * Plans to write it in ES6(ES2015).
- * 
- * Requirements:
- * jQuery 2.x 
- * (For $.Animation and Selector, will be replaced one I figured out an alternate solution)
- * 
- * CryptoJS
- * (For MD5 encryption, might required for generating keys for server requests)
- * 
- * Supported Browsers:
- * WebKit / WebEngine based Browsers, Gecko based Browsers
- * (IE / Edge not supported, Safari also not supported)
- * 
- * Audio format:
- * Suggests WebM Vorbis, or WebM Opus.
- * Please check the browser's codec support.
- * 
- * Video format:
- * Suggests WebM-VP9.
- * Please check the browser's codec support.
- * 
- * Bundled Library / Plugin:
- * jQuery easing
- * ScreenFull
- * 
- * @author KiddoKenshin @ K2-R&D.com
- * @since 2012/04/01, RE: 2013/01/17, TRE: 2013/12/13, C-ADV: 2014/05/26
- * @version -WORK IN PROGRESS-
- * 
- * Current Progress: Audio Related
- * TODO: Split CADV functions to more obvious call style? Example: cadv.public.functionName, cadv.private.functionName ?
- * 
- * Rough DEMO using CADV: http://furi2purei.com/index.min.html
-//*/
+/******/ (function(modules) { // webpackBootstrap
+/******/ 	// The module cache
+/******/ 	var installedModules = {};
+/******/
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/
+/******/ 		// Check if module is in cache
+/******/ 		if(installedModules[moduleId]) {
+/******/ 			return installedModules[moduleId].exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = installedModules[moduleId] = {
+/******/ 			i: moduleId,
+/******/ 			l: false,
+/******/ 			exports: {}
+/******/ 		};
+/******/
+/******/ 		// Execute the module function
+/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/
+/******/ 		// Flag the module as loaded
+/******/ 		module.l = true;
+/******/
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/
+/******/
+/******/ 	// expose the modules object (__webpack_modules__)
+/******/ 	__webpack_require__.m = modules;
+/******/
+/******/ 	// expose the module cache
+/******/ 	__webpack_require__.c = installedModules;
+/******/
+/******/ 	// define getter function for harmony exports
+/******/ 	__webpack_require__.d = function(exports, name, getter) {
+/******/ 		if(!__webpack_require__.o(exports, name)) {
+/******/ 			Object.defineProperty(exports, name, {
+/******/ 				configurable: false,
+/******/ 				enumerable: true,
+/******/ 				get: getter
+/******/ 			});
+/******/ 		}
+/******/ 	};
+/******/
+/******/ 	// getDefaultExport function for compatibility with non-harmony modules
+/******/ 	__webpack_require__.n = function(module) {
+/******/ 		var getter = module && module.__esModule ?
+/******/ 			function getDefault() { return module['default']; } :
+/******/ 			function getModuleExports() { return module; };
+/******/ 		__webpack_require__.d(getter, 'a', getter);
+/******/ 		return getter;
+/******/ 	};
+/******/
+/******/ 	// Object.prototype.hasOwnProperty.call
+/******/ 	__webpack_require__.o = function(object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
+/******/
+/******/ 	// __webpack_public_path__
+/******/ 	__webpack_require__.p = "";
+/******/
+/******/ 	// Load entry module and return exports
+/******/ 	return __webpack_require__(__webpack_require__.s = 0);
+/******/ })
+/************************************************************************/
+/******/ ([
+/* 0 */
+/***/ (function(module, exports, __webpack_require__) {
 
-//# Common Functions #//
-/** 
- * Generates MD5 string from supplied string.
- * (For server interactions, CryptoJS MD5 Needed)
- * 
- * @return string
- */
-function MD5(stringIn) {
-	if (typeof(CryptoJS) == 'undefined') {
-		error('CryptoJS is required to use MD5');
-	}
-	var hash = CryptoJS.MD5(stringIn);
-	return hash.toString();
-}
+"use strict";
+/* WEBPACK VAR INJECTION */(function(global, module) {var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;
 
-/** 
- * Acquire current datetime.
- * (For server interactions)
- * 
- * @return string
- */
-function getYmdHis() {
-	var date = new Date();
-	var ymdhis = 
-		date.getFullYear() + 
-		('0' + (date.getMonth() + 1)).slice(-2) + 
-		('0' + date.getDate()).slice(-2) + 
-		('0' + date.getHours()).slice(-2) + 
-		('0' + date.getMinutes()).slice(-2) + 
-		('0' + date.getSeconds()).slice(-2)
-	;
-	delete date;
-	return ymdhis;
-}
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
-////////////////////
-// Indexed DB
-////////////////////
-// TODO: Move into CADV object as it only uses in preload?
-var iDB;
-var iDBInit = false;
-/**
- * Initialize Indexed DB to be used as local content manager. (Async)
- * 
- * @returns void
- */
-function initDB() {
-	iDB = null;
-	if (!window.indexedDB) {
-		log('Indexed DB not available');
-		iDBInit = true;
-		return;
-	}
-	
-	var dbRequest = indexedDB.open('CADV_DB', 1); // Doesn't work in FireFox during Private Mode.
-	dbRequest.onupgradeneeded = function(event) {
-		// createObjectStore only works in OnUpgradeNeeded
-		log('Initializing DB...');
-		iDB = dbRequest.result;
-		if(!iDB.objectStoreNames.contains('imageStorage')) {
-			iDB.createObjectStore('imageStorage');
-			log('imageStorage Created');
-		}
-		if(!iDB.objectStoreNames.contains('audioStorage')) {
-			iDB.createObjectStore('audioStorage');
-			log('audioStorage Created');
-		}
-		if(!iDB.objectStoreNames.contains('videoStorage')) {
-			iDB.createObjectStore('videoStorage');
-			log('videoStorage Created');
-		}
-	};
-	dbRequest.onsuccess = function(event) {
-		iDB = dbRequest.result;
-		iDBInit = true;
-		log('DB Opened!');
-	};
-	dbRequest.onerror = function(event) {
-		iDBInit = true;
-		log('DB Failed!');
-	};
-}
+var _animejs = __webpack_require__(1);
 
-/**
- * Stores data to Indexed DB for later usage. (Async)
- * 
- * @param string resourceType | images, audios, videos
- * @param string uid | unique id to be use later
- * @param ArrayBuufer/Blob dataObject | the data to be store
- * @returns void
- */
-function storeToIndexedDB(resourceType, uid, dataObject) {
-	if (iDB == null) {
-		log('iDB not available');
-		return;
-	}
-	
-	var useStorage = resourceType.substring(0, resourceType.length - 1) + 'Storage';
-	var dbTransactions = iDB.transaction([useStorage], 'readwrite');
-	var dbStorage = dbTransactions.objectStore(useStorage);
-	var storeRequest = dbStorage.put(dataObject, uid);
-	storeRequest.onsuccess = function(event) {
-		log(uid + '(' + resourceType + ') stored.');
-	};
-	storeRequest.onerror = function(event) {
-		log(uid + '(' + resourceType + ') error while put into DB.');
-	};
-}
+var _animejs2 = _interopRequireDefault(_animejs);
 
-/**
- * Retrieves data from Indexed DB. (Async)
- * 
- * @param string resourceType | images, audios, videos
- * @param string uid | unique id to be use later
- * @param function callback | refer to storageCallback in cadv.startPreloadResources
- * @returns void
- */
-function getFromIndexedDB(resourceType, uid, callback) {
-	if (iDB == null) {
-		log('iDB not available');
-		callback(resourceType, uid, null);
-		return;
-	}
-	
-	var useStorage = resourceType.substring(0, resourceType.length - 1) + 'Storage';
-	var dbTransactions = iDB.transaction([useStorage], 'readwrite');
-	var dbStorage = dbTransactions.objectStore(useStorage);
-	var storeRequest = dbStorage.get(uid);
-	storeRequest.onsuccess = function(event) {
-		log(uid + '(' + resourceType + ') loaded.');
-		callback(resourceType, uid, storeRequest.result);
-	};
-	storeRequest.onerror = function(event) {
-		log(uid + '(' + resourceType + ') failed on retrieving.');
-		callback(resourceType, uid, null);
-	};
-}
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-/**
- * Remove data from Indexed DB. (Async)
- * 
- * @param string resourceType | images, audios, videos
- * @param string uid | unique id for data to be removed
- * @return void
- */
-function removeFromIndexedDB(resourceType, uid) {
-	if (iDB == null) {
-		log('iDB not available');
-		return;
-	}
-	
-	var useStorage = resourceType + 'Storage';
-	var dbTransactions = iDB.transaction([useStorage], 'readonly');
-	var dbStorage = dbTransactions.objectStore(useStorage);
-	var storeRequest = dbStorage.delete(uid);
-	storeRequest.onsuccess = function(event) {
-		log(uid + '(' + resourceType + ') deleted.');
-	};
-	storeRequest.onerror = function(event) {
-		log(uid + '(' + resourceType + ') error on deleting.');
-	};
-}
+(function (root, factory) {
+  if (root === window || root === global) {
+    root.cadv = factory();
+    console.log('Browser / Node');
+  } else if (( false ? 'undefined' : _typeof(module)) === 'object' && module.exports) {
+    module.exports = factory();
+    console.log('ES Module');
+  } else if (true) {
+    !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
+				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+    console.log('Anonymous Module');
+  } else {
+    console.log('Not suppose to happen...');
+  }
+})(window || global || module || {}, function () {
 
-/**
- * Clear all Indexed DB
- * 
- * @return void
- */
-function clearIndexedDB() {
-	var dbRequest = indexedDB.deleteDatabase('CADV_DB');
-	dbRequest.onsuccess = function () {
-		iDBInit = false;
-		log('DB deleted successfully');
-		initDB();
-	};
-	dbRequest.onerror = function () {
-		log('Unable to delete DB');
-	};
-	dbRequest.onblocked = function () {
-		log('Unable to delete DB due to the operation being blocked');
-	};
-}
+  var x = 0;
 
-
-/** 
- * Detects mobile device via user agent.
- * 
- * @return boolean
- */
-var mobile;
-function isMobile() {
-	if (mobile == undefined) {
-		mobile = false;
-		if (navigator.userAgent.match(/(iPad|iPhone|iPod|Android|android)/g)) {
-			mobile = true;
-		}
-	}
-	return mobile;
-}
-
-/**
- * Display logs in console. Mostly for debugging purpose.
- * 
- * @param string message | String to be output in console.
- * @param boolean force | Outputs to console despite of not debug mode.
- * @return void
- */
-function log(message, force) {
-	if (cadv.system.debug || force === true) {
-		console.log(message);
-	}
-}
-
-/**
- * Throws an error. Most probably the best way to stop anything moving.
- * 
- * @param string message | The error message
- * @return void
- */
-function error(message) {
-	alert('Error occured, unable to proceed.');
-	throw Error(message);
-}
-
-//# CADV Related #//
-var cadv = new Object;
-
-// WIP
-cadv.pulic = {};
-cadv.private = {};
-
-// System Settings, can be modify to suit user's needs
-cadv.system = {
-	'debug' : false, // Debug mode
-	'stoponerror' : true, // Stop engine when error occured
-	'title' : 'Canvas_Adventure_Engine', // Rename-able
-	'version' : '', // Set by user, to check save files?
-	'width' : 1280, // Game Width
-	'height' : 720, // Game Height
-	'defaultbgcolor' : '#000000', // Default background color
-	'screenscale' : 1.0, // Screen Scaling (Game size / Screen size), Renew Scaling whenever Screen size changed
-	'autoscale' : false, // Perform auto scaling (Fit to screen)
-	
-	'textselector' : undefined, // jQuery Object, Will be occupied after created.
-	'textspeed' : 30, // fps
-	
-	'useaudio' : false, // Web Audio API and other Audio related stuff
-	'mastervolume' : 1, // MASTER Volume
-	'bgmvolume' : 1, // BGM Volume
-	'sfxvolume' : 1, // SFX Volume
-	'voicevolume' : 1, // VOICE Volume
-	
-	'videovolume' : 1 // Video Volume
-};
-
-// Audio related variables
-cadv.audio = {
-	'context' : null
-};
-
-cadv.initAudio = function() {
-	if (cadv.system.useaudio) {
-		if (typeof(AudioContext) != 'undefined') {
-			// Web Audio API is all unprefixed
-			cadv.audio.context = new AudioContext();
-			cadv.audio['master'] = cadv.audio.context.createGain();
-			cadv.audio['master'].gain.value = cadv.system.mastervolume;
-			cadv.audio['master'].connect(cadv.audio.context.destination);
-			
-			var audioType = ['bgm', 'sfx', 'voice'];
-			for (var i = 0; i < audioType.length; i++) {
-				var type = audioType[i];
-				cadv.audio[type] = cadv.audio.context.createGain();
-				cadv.audio[type].gain.value = cadv.system[type + 'volume'];
-				cadv.audio[type].connect(cadv.audio['master']);
-				
-				cadv.audio[type + 'out'] = cadv.audio.context.createBufferSource();
-				cadv.audio[type + 'out'].connect(cadv.audio[type]);
-			}
-			
-			return true;
-		} else {
-			// FORCE to switch back
-			cadv.system.useaudio = false;
-			return false;
-		}
-	}
-};
-
-// Work In Progress
-cadv.playAudio = function(audioType, audioId, isLoop) {
-	if (isLoop == undefined) {
-		isLoop = false;
-	}
-	
-	// BGM is always loop
-	if (audioType == 'bgm') {
-		isLoop = true;
-	}
-	
-	if (audioType == 'sfx' && !isLoop) {
-		// Non-loop SFX is plainly disposable
-		var audioOutput = cadv.audio.context.createBufferSource();
-		audioOutput.buffer = resources.audios[audioId];
-		audioOutput.connect(cadv.audio.sfx);
-		audioOutput.start(0);
-	} else {
-		cadv.audio[audioType + 'out'].buffer = resources.audios[audioId];
-		cadv.audio[audioType + 'out'].loop = isLoop;
-		cadv.audio[audioType + 'out'].start(0);
-	}
-};
-
-cadv.playCrossfadeBGM = function(audioId, crossfadeDuration) {
-	var bgmVolume = cadv.audio.context.createGain();
-	bgmVolume.gain.value = 0;
-	bgmVolume.connect(cadv.audio['master']);
-	
-	var bgmOutput = cadv.audio.context.createBufferSource();
-	bgmOutput.buffer = resources.audios[audioId];
-	bgmOutput.loop = true;
-	bgmOutput.connect(bgmVolume);
-	bgmOutput.start(0);
-	
-	log('Crossfade begin!');
-	$.Animation(bgmVolume.gain, {
-		value: cadv.system['bgmvolume']
-	}, {
-		duration: crossfadeDuration,
-		easing: 'linear'
-	});
-	
-	$.Animation(cadv.audio.bgm.gain, {
-		value: 0
-	}, {
-		duration: crossfadeDuration,
-		easing: 'linear'
-	}).done(function() {
-		cadv.audio.bgmout.stop();
-		delete cadv.audio.bgm, cadv.audio.bgmout;
-		
-		cadv.audio.bgm = bgmVolume;
-		cadv.audio.bgmout = bgmOutput;
-		log('Crossfade complete!');
-	});
-};
-
-cadv.stopAudio = function(audioType) {
-	cadv.audio[audioType + 'out'].stop();
-};
-
-// CSS for text output
-// (Text on Canvas do not recognize new lines)
-cadv.textOut = {
-	'position' : 'absolute',
-	'font-family' : 'Meiryo UI, Hiragino Maru Gothic ProN',
-	'font-size' : '16px',
-	'line-height' : '16px',
-	'left' : '16px',
-	'top' : '16px',
-	'color' : '#FFFAFA',
-	'overflow' : 'visible',
-	'cursor' : 'default'
-};
-
-cadv.choiceBox = {
-	'width' : '240px',
-	'height' : '48px',
-	'color' : '#111111',
-	'text-align' : 'center',
-	'line-height' : '48px',
-	'border' : 'solid 1px #999999',
-	'border-radius' : '4px',
-	'margin' : '12px 0 12px',
-	'cursor' : 'default',
-	'opacity' : '0'
-};
-
-cadv.choiceBoxHover = {
-	'font-size' : '1.125em',
-	'color' : '#666666',
-	'border' : 'solid 1px #7777FF',
-	'opacity' : '0.9'
-};
-
-// In game states, not to be overwritten by user.
-// TODO: Create this dynamically so it won't be overwritten easily?
-cadv.states = {
-	'outputingtext'	: false
-};
-
-// Custom variables, user can add them and manipulate them.
-cadv.customvar = {};
-
-//## PRELOAD Functions ##//
-var loadErrors = 0;
-var preload = {
-	'images' : {},
-	'audios' : {},
-	'videos' : {}
-};
-var resources = {
-	'images' : {}, // Image (From Blob)
-	'audios' : {}, // AudioBuffer (From ArrayBuffer)
-	'videos' : {}  // Video (From Blob)
-};
-var loadIndicator = {
-	'images' : {}, // Image (From Blob)
-	'audios' : {}, // AudioBuffer (From ArrayBuffer)
-	'videos' : {}  // Video (From Blob)
-};
-
-/**
- * Add resource to preload list
- * 
- * @param string resourceType | image, audio, video
- * @param string resourceID | ID to be use later on manipulating them
- * @param string resourceURL | Source of Resource
- * @return void
- */
-cadv.addPreloadResource = function(resourceType, resourceID, resourceURL) {
-	switch(resourceType) {
-		case 'image':
-			preload.images[resourceID] = resourceURL;
-			break;
-		case 'audio':
-			preload.audios[resourceID] = resourceURL;
-			break;
-		case 'video':
-			preload.videos[resourceID] = resourceURL;
-			break;
-		default:
-			var message = resourceType + ' is not a valid resource type!';
-			log(message);
-			if (cadv.system.stoponerror) {
-				error(message);
-			}
-			break;
-	}
-	log(resourceURL + ' is added to preload list!');
-};
-
-/**
- * Start the resource loading.
- * 
- * @return void
- */
-cadv.startedPreload = false;
-cadv.startPreloadResources = function() {
-	
-	if (cadv.startedPreload) {
-		log('Preload started');
-		return;
-	}
-	cadv.startedPreload = true;
-	
-	initDB();
-	var dbInitTimer = setInterval(function() {
-		if (iDBInit) {
-			clearInterval(dbInitTimer);
-			afterInit();
-		}
-	}, 100);
-	
-	function storageCallback(resourceType, uid, resourceData) {
-		if (resourceData != null) {
-			assignToResource(resourceType, uid, resourceData);
-		} else {
-			loadResourceFromXHR(resourceType, uid, preload[resourceType][uid]);
-		}
-	}
-	
-	function loadResourceFromXHR(resourceType, uid, resourceUrl) {
-		// Simple DRM 1, CORS policy apply to XHR in the new browsers.
-		var xhRequest = new XMLHttpRequest();
-		xhRequest.open('GET', resourceUrl, true);
-		xhRequest.responseType = 'arraybuffer';
-		xhRequest.onload = function(eventObj) {
-			var rawArrayBuffer = this.response;
-			var contentBlob = new Blob([rawArrayBuffer]);
-			
-			var useData = contentBlob;
-			if (resourceType == 'audios') {
-				useData = rawArrayBuffer;
-			}
-			storeToIndexedDB(resourceType, uid, useData);
-			assignToResource(resourceType, uid, useData);
-			
-			log(resourceUrl + ' loaded!');
-		};
-		xhRequest.onerror = function(eventObj) {
-			var message = resourceUrl + ' error! (Request)';
-			loadErrors++;
-			log(message);
-			if (cadv.system.stoponerror) {
-				error(message);
-			}
-		};
-		xhRequest.onprogress = function(eventObj){
-			if(eventObj.lengthComputable) {
-				// var percentComplete = eventObj.loaded / eventObj.total;
-				// do something with this
-			}
-		};
-		
-		// Simple DRM 2, Only allow access with custom header
-		// TODO: Dynamic Header? More Header?
-		xhRequest.setRequestHeader('CADV-ENGINE', '1.0');
-		xhRequest.send();
-	}
-	
-	function assignToResource(resourceType, uid, resourceData) {
-		switch(resourceType) {
-			case 'images':
-				var newImage = new Image();
-				newImage.src = URL.createObjectURL(resourceData);
-				resources.images[uid] = newImage;
-				break;
-			case 'videos':
-				var newVideo = document.createElement('video');
-				newVideo.src = URL.createObjectURL(resourceData);
-				resources.videos[uid] = newVideo;
-				break;
-			case 'audios':
-				cadv.audio.context.decodeAudioData(resourceData, function(buffer) {
-					resources.audios[uid] = buffer;
-					log(uid + '(' + resourceType + ') decoded!');
-				}, function() {
-					// Error Callback
-					var message = uid + '(' + resourceType + ') error! (Decode)';
-					loadErrors++;
-					log(message);
-					if (cadv.system.stoponerror) {
-						error(message);
-					}
-				});
-				break;
-		}
-	}
-	
-	function afterInit() {
-		// Init Audio related in Preload
-		if (!cadv.initAudio()) {
-			log('Unable to create audio context. Web Audio API might be not available.');
-			log('No audio will be loaded.');
-			
-			// Empty Audio list
-			preload.audios = {};
-		}
-		
-		for (var i = 0, keys = Object.keys(preload); i < keys.length; i++) {
-			var resourceType = keys[i];
-			if (!$.isEmptyObject(preload[resourceType])) {
-				
-				if (resourceType == 'audios' && !cadv.system.useaudio) {
-					log('Skipping audio list. (UseAudio disabled)');
-					continue;
-				}
-				
-				log('Total of preload ' + resourceType + ': ' + Object.keys(preload[resourceType]).length);
-				
-				for (var j = 0, idKeys = Object.keys(preload[resourceType]); j < idKeys.length; j++) {
-					// Load Resource
-					// Attempt to retrieve from Storage, load from XHR when empty
-					var resourceID = idKeys[j];
-					getFromIndexedDB(resourceType, resourceID, storageCallback);
-				}
-				
-			} else {
-				log('Preload list of ' + resourceType + ' is empty!');
-			}
-		}
-	}
-	
-};
-
-/**
- * (Deprecated!)
- * Add image source to preload list
- * 
- * @param string imageID | ID to be use later on manipulating them
- * @param string imageURL | Image source
- * @return void
- */
-cadv.addPreloadImage = function(imageID, imageURL) {
-	log('addPreloadImage is Deprecated, will be removed soon');
-	cadv.addPreloadResource('image', imageID, imageURL);
-};
-
-/**
- * (Deprecated!)
- * Start the resource(image) loading.
- * 
- * @return void
- */
-cadv.startPreloadImages = function() {
-	log('startPreloadImages is Deprecated, will be removed soon');
-	cadv.startPreloadResources();
-};
-
-/**
- * (Deprecated!)
- * Add audio source to preload list
- * 
- * @param string audioID | ID to be use later on manipulating them
- * @param string audioURL | Audio source
- * @return void
- */
-cadv.addPreloadAudio = function(audioID, audioURL) {
-	log('addPreloadAudio is Deprecated, will be removed soon');
-	cadv.addPreloadResource('audio', audioID, audioURL);
-};
-
-/**
- * (Deprecated!)
- * Start the resource(audio) loading.
- * 
- * @return void
- */
-cadv.startPreloadAudios = function() {
-	log('startPreloadAudios is Deprecated, will be removed soon');
-	cadv.startPreloadResources();
-};
-
-/**
- * (Deprecated!)
- * Add video source to preload list
- * 
- * @param string videoID | ID to be use later on manipulating them
- * @param string videoURL | Video source
- * @return void
- */
-cadv.addPreloadVideo = function(videoID, videoURL) {
-	log('addPreloadVideo is Deprecated, will be removed soon');
-	cadv.addPreloadResource('video', videoID, videoURL);
-};
-
-/**
- * (Deprecated!)
- * Start the resource(video) loading.
- * 
- * @return void
- */
-cadv.startPreloadVideos = function() {
-	log('startPreloadVideos is Deprecated, will be removed soon');
-	cadv.startPreloadResources();
-};
-
-cadv.startPreload = function() {
-	log('startPreload is Deprecated, will be removed soon');
-	cadv.startPreloadResources();
-};
-
-// INGAME Draw mechanics (Core)
-var oldObjects = {
-	'backgrounds' : {},
-	'characters' : {},
-	'messagewindow' : {}
-};
-var detailObjects = {
-	'backgrounds' : {},
-	'characters' : {},
-	'messagewindow' : {}
-};
-
-var canvas, canvasContext;
-var canvasRefresh = false;
-
-cadv.performScaling = function() {
-	cadv.system.screenscale = window.innerWidth / cadv.system.width;
-	if (cadv.system.height * cadv.system.screenscale > window.innerHeight) {
-		cadv.system.screenscale = window.innerHeight / cadv.system.height;
-	}
-	
-	// No scale below 0.5 (50%)
-	if (cadv.system.screenscale < 0.5) {
-		cadv.system.screenscale = 0.5;
-	}
-	
-	// Adjust canvas height to adapt changes
-	if (cadv.system.screenscale > 1.0) {
-		canvas.width = window.innerWidth;
-		canvas.height = window.innerHeight;
-	} else {
-		canvas.width = cadv.system.width;
-		canvas.height = cadv.system.height;
-	}
-};
-
-cadv.stopScaling() = function() {
-	cadv.system.autoscale = false;
-	cadv.system.screenscale = 1.0;
-	canvas.width = cadv.system.width;
-	canvas.height = cadv.system.height;
-};
-
-cadv.createImage = function(imageType, uid, imageID, extraParams) {
-	var newImage = resources.images[imageID];
-	var newCanvas = document.createElement('canvas');
-	var detailObject = {
-			'id' : uid, // Unique ID
-			'canvasObject' : newCanvas, // Canvas Object Holder
-			'imageObject' : newImage, // Image Object Holder
-			'type' : imageType, // 
-			'percentX' : '0',
-			'percentY' : '0',
-			'x' : '0',
-			'y' : '0',
-			'iWidth' : newImage.width,
-			'iHeight' : newImage.height,
-			'hFlip' : '1', // Horizontal Flip
-			'vFlip' : '1', // Vertical Flip
-			'opac' : '1', // Opacity
-			'originX' : '50%', // Transform Origin X
-			'originY' : '50%', // Transform Origin Y
-			'stretch' : false, // Enable stretch (Mainly used in BG)
-			'stretchScale' : '1', // Stretched Scale
-			'imageScale' : '1', // Image Scale
-			'rotate' : '0', // Rotation (Degree, 0 - 360)
-			'xSlice' : '1',
-			'ySlice' : '1',
-			'xCount' : '0',
-			'yCount' : '0'
-				// Default Offset?
-	};
-	
-	// Overwrites Parameter above if extra parameters were provided
-	if (extraParams != undefined) {
-		for (var i = 0, keys = Object.keys(extraParams); i < keys.length; i++) {
-			var key = keys[i];
-			if (detailObject[key] != undefined) {
-				detailObject[key] = extraParams[key];
-			}
-		}
-	}
-	
-	if (extraParams != undefined && extraParams.parentId != undefined && extraParams.childType != undefined) {
-		if (detailObjects[imageType][extraParams.parentId] == undefined) {
-			throw new Error('No such parent!');
-		}
-		if (detailObjects[imageType][extraParams.parentId][extraParams.childType] == undefined) {
-			detailObjects[imageType][extraParams.parentId][extraParams.childType] = {};
-		}
-		detailObjects[imageType][extraParams.parentId][extraParams.childType] = detailObject;
-	} else {
-		detailObjects[imageType][uid] = detailObject;
-	}
-	
-	return uid;
-};
-
-cadv.createImageV2 = cadv.createImage; // Deprecated, V2 replaced the old createImage
-
-cadv.drawDetail = function(detailObject, parentObject) {
-	if (oldObjects[detailObject.type][detailObject.id] == undefined) {
-		oldObjects[detailObject.type][detailObject.id] = $.extend({}, detailObject);
-	}
-	
-	detailObject.canvasObject.width = canvas.width; detailObject.canvasObject.height = canvas.height;
-	if (parentObject !== undefined) {
-		detailObject.canvasObject.width = cadv.system.width;
-		detailObject.canvasObject.height = cadv.system.height;
-		// Need calculate both to acquire enough canvas size
-	}
-	var ncContext = detailObject.canvasObject.getContext('2d');
-	
-	var scale = canvas.width / detailObject.imageObject.width;
-	detailObject.stretchScale = scale;
-	scale *= detailObject.imageScale;
-	
-	if (detailObject.stretch) {
-		detailObject.iWidth = detailObject.imageObject.width * detailObject.imageScale;
-		detailObject.iHeight = detailObject.imageObject.height * detailObject.imageScale;
-		ncContext.scale(scale * parseInt(detailObject.hFlip), scale * parseInt(detailObject.vFlip));
-	} else {
-		if (parentObject !== undefined) {
-			ncContext.scale(detailObject.hFlip * detailObject.imageScale, detailObject.vFlip * detailObject.imageScale);
-		} else {
-			// ncContext.scale(detailObject.hFlip * detailObject.imageScale * cadv.system.screenscale, detailObject.vFlip * detailObject.imageScale * cadv.system.screenscale);
-			ncContext.scale(detailObject.hFlip * detailObject.imageScale, detailObject.vFlip * detailObject.imageScale);
-		}
-	}
-	
-	var useOriginX = detailObject.originX, useOriginY = detailObject.originY;
-	if (useOriginX.indexOf('%') != 0) {
-		useOriginX = detailObject.imageObject.width * (parseInt(useOriginX) / 100);
-	}
-	if (useOriginY.indexOf('%') != 0) {
-		useOriginY = detailObject.imageObject.height * (parseInt(useOriginY) / 100);
-	}
-	
-	ncContext.translate(useOriginX, useOriginY);
-	if (parseInt(detailObject.rotate) != 0) {
-		ncContext.rotate(detailObject.rotate * (Math.PI/180));
-	}
-	ncContext.translate(-useOriginX, -useOriginY);
-	
-	ncContext.globalAlpha = detailObject.opac;
-	
-	var useX = detailObject.x;
-	var useY = detailObject.y;
-	var prevXPercent = oldObjects[detailObject.type][detailObject.id]['percentX'];
-	var prevYPercent = oldObjects[detailObject.type][detailObject.id]['percentY'];
-	if (detailObject.percentX != prevXPercent) {
-		useX = ((detailObject.iWidth - detailObject.imageObject.width) / detailObject.imageScale) * (parseInt(detailObject.percentX) / 100) * -1; // This Works
-		// useX = ((this.iWidth - canvas.width) / this.iScale) * (parseInt(this.percentX) / 100) * -1;
-		if (!isFinite(useX)) {
-			useX = '0';
-		}
-		detailObject.x = useX;
-	} else {
-		// Renew percent X
-		detailObject.percentX = ((detailObject.x / ((detailObject.iWidth - detailObject.imageObject.width) / detailObject.imageScale)) * -100);
-		if (!isFinite(detailObject.percentX)) {
-			detailObject.percentX = '0';
-		}
-	}
-	
-	// TODO: Logic for Percent Y differs from Percent X, needs more testing
-	if (detailObject.percentY != prevYPercent) {
-		var useScale = detailObject.imageScale;
-		if (detailObject.stretch) {
-			useScale = detailObject.stretchScale * detailObject.imageScale;
-		}
-		// useY = ((this.iHeight - image.height) / this.iScale) * (parseInt(this.percentY) / 100) * -1; // Not Working
-		useY = ((detailObject.imageObject.height - (canvas.height / useScale))) * (parseInt(detailObject.percentY) / 100) * -1; // It works!
-		if (!isFinite(useY)) {
-			useY = '0';
-		}
-		detailObject.y = useY;
-	} else {
-		// Renew percent Y
-		detailObject.percentY = ((detailObject.y / ((detailObject.iHeight - detailObject.imageObject.height) / detailObject.imageObject.iScale)) * -100);
-		if (!isFinite(detailObject.percentY)) {
-			detailObject.percentY = '0';
-		}
-	}
-	// log(useY);
-	
-	if (detailObject.xSlice == '1' && detailObject.ySlice == '1') {
-		// ncContext.drawImage(detailObject.imageObject, useX, useY, detailObject.imageObject.width * cadv.system.screenscale, detailObject.imageObject.height * cadv.system.screenscale);
-		// ncContext.drawImage(detailObject.imageObject, 0, 0, detailObject.imageObject.width, detailObject.imageObject.height, useX, useY, detailObject.imageObject.width * cadv.system.screenscale, detailObject.imageObject.height * cadv.system.screenscale);
-		ncContext.drawImage(detailObject.imageObject, 0, 0, detailObject.imageObject.width, detailObject.imageObject.height, useX, useY, detailObject.imageObject.width, detailObject.imageObject.height);
-	} else {
-		var xSize = detailObject.imageObject.width / detailObject.xSlice;
-		var ySize = detailObject.imageObject.height / detailObject.ySlice;
-		var xOffset = xSize * parseInt(detailObject.xCount);
-		var yOffset = ySize * parseInt(detailObject.yCount);
-		ncContext.drawImage(detailObject.imageObject, xOffset, yOffset, xSize, ySize, parseFloat(useX) + parseFloat(parentObject.x), parseFloat(useY) + parseFloat(parentObject.y), xSize, ySize);
-		
-		// log(ySize);
-		
-		delete xSize, ySize, xOffset, yOffset;
-	}
-	
-	oldObjects[detailObject.type][detailObject.id] = $.extend({}, detailObject);
-	
-	if (detailObject.type == 'characters' && detailObject.face != undefined) {
-		ncContext.drawImage(this.drawDetail(detailObject.face, detailObject), 0, 0);
-	}
-	
-	delete ncContext, useX, useY;
-	return detailObject.canvasObject;
-};
-
-// Modify for other uses (Shooter, RPG, etc...)
-cadv.drawCanvas = function() {
-	
-	var widthOffset = 0;
-	var heightOffset = 0;
-	
-	if (true || cadv.system.screenscale != '1.0') {
-		widthOffset = Math.round(window.innerWidth - (cadv.system.width * cadv.system.screenscale));
-		heightOffset = Math.round(window.innerHeight - (cadv.system.height * cadv.system.screenscale));
-		// log($(window).height());
-	}
-	//*/
-	
-	// DEV NOTES: 
-	// http://stackoverflow.com/questions/18565395/why-does-canvas-context-drawimage-fail-on-iphone
-	// Explains canvasContext.drawImage (with 9 params) not working on iPhone but the one with 5 params does.
-	
-	// Background Layer
-	for (var i = 0, keys = Object.keys(detailObjects.backgrounds); i < keys.length; i++) {
-		var uid = keys[i];
-		if (isMobile()) {
-			// canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
-			canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, canvas.width, canvas.height);
-		} else {
-			// canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
-			// canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
-			canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, cadv.system.width, cadv.system.height, 0, 0, cadv.system.width, cadv.system.height);
-		}
-	}
-	
-	for (var i = 0, keys = Object.keys(detailObjects.characters); i < keys.length; i++) {
-		var uid = keys[i];
-		if (isMobile()) {
-			// canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
-			canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, canvas.width, canvas.height);
-		} else {
-			// canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
-			// canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
-			canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, cadv.system.width, cadv.system.height, 0, 0, cadv.system.width, cadv.system.height);
-		}
-	}
-	
-	for (var i = 0, keys = Object.keys(detailObjects.messagewindow); i < keys.length; i++) {
-		var uid = keys[i];
-		if (isMobile()) {
-			// canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
-			canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, canvas.width, canvas.height);
-		} else {
-			// canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
-			// canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
-			canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, cadv.system.width, cadv.system.height, 0, 0, cadv.system.width, cadv.system.height);
-		}
-	}
-	
-};
-
-cadv.resetCanvas = function() {
-	canvasContext.clearRect(0, 0, canvas.width, canvas.height);
-	canvasContext.fillStyle = cadv.system.defaultbgcolor;
-	canvasContext.fillRect(0, 0, canvas.width, canvas.height);
-	
-	// Reset fillStyle
-	canvasContext.fillStyle = '';
-	
-	// Save state
-	canvasContext.save();
-	
-	// Apply Screen Scaling
-	canvasContext.scale(cadv.system.screenscale, cadv.system.screenscale);
-	
-	// Redraw everything & restore state
-	cadv.drawCanvas();
-	canvasContext.restore();
-		
-	return canvasRefresh; // For jQuery.fx.timer
-};
-
-cadv.setPosition = function() {
-	if (!canvasRefresh) {
-		log('Not running yet. Do nothing.');
-		return;
-	}
-	
-	if (detailObjects.messagewindow.base == undefined) {
-		log('Message Window not ready!');
-		setTimeout(cadv.setPosition, 1000);
-		return;
-	}
-	
-	// TODO: Center canvas content if browser width is larger than canvas contents, even if scale not applied?
-	
-	if (cadv.system.screenscale != 1.0) {
-		var widthOffset = Math.round(window.innerWidth - (cadv.system.width * cadv.system.screenscale)) / 2;
-		var heightOffset = Math.round(window.innerHeight - (cadv.system.height * cadv.system.screenscale)) / 2;
-		
-		if (cadv.system.screenscale <= 0.5) {
-			heightOffset = 0;
-			// $('body').css('height', (cadv.system.height / 2) + 'px');
-		}
-		
-		$('canvas#cadv').css({
-			'position' : 'fixed', // absolute?
-			'left' : widthOffset + 'px',
-			'top' : heightOffset + 'px'
-		});
-		
-		$('div#textout').css({
-			'left' : ((parseInt(cadv.textOut.left) + (detailObjects.messagewindow.base.x)) * cadv.system.screenscale) + widthOffset + 'px',
-			'top' : ((parseInt(cadv.textOut.top) + (detailObjects.messagewindow.base.y)) * cadv.system.screenscale) + heightOffset + 'px',
-			'transform' : 'scale(' + cadv.system.screenscale + ')',
-			'transform-origin' : '0% 0%'
-		});
-	} else {
-		$('div#textout').css({
-			'left' : (parseInt(cadv.textOut.left) + (detailObjects.messagewindow.base.x)) + 'px',
-			'top' : (parseInt(cadv.textOut.top) + (detailObjects.messagewindow.base.y)) + 'px',
-		});
-	}
-};
-
-cadv.start = function(callback) {
-	canvasRefresh = true;
-	jQuery.fx.timer(this.resetCanvas);
-	
-	if (callback !== undefined && typeof(callback) == 'function') {
-		callback();
-	}
-	
-	// Besure to remember to set MessageBox in callback
-	cadv.setPosition();
-};
-
-cadv.stop = function() {
-	canvasRefresh = false;
-};
-
-cadv.init = function(callback) {
-	// Initialize Canvas
-	canvas = document.createElement('canvas');
-	canvas.id = 'cadv';
-	canvas.width = cadv.system.width;
-	canvas.height = cadv.system.height;
-	canvasContext = canvas.getContext('2d');
-	
-	// Append Canvas to HTML Document(Body)
-	$('body').empty().append(canvas).css('background-color', cadv.system.defaultbgcolor);
-	
-	// CSS for textOut
-	var textOutCSS = '';
-	for (var i = 0, keys = Object.keys(cadv.textOut); i < keys.length; i++) {
-		var key = keys[i];
-		textOutCSS += (key + ':' + cadv.textOut[key] + ';');
-	}
-	textOutCSS = 'div#textout{' + textOutCSS + '}';
-	
-	// CSS for choiceBox
-	var choiceBoxCSS = '';
-	for (var i = 0, keys = Object.keys(cadv.choiceBox); i < keys.length; i++) {
-		var key = keys[i];
-		choiceBoxCSS += (key + ':' + cadv.choiceBox[key] + ';');
-	}
-	choiceBoxCSS = 'div.choice{' + choiceBoxCSS + '}';
-	
-	// CSS for choiceBoxHover
-	var choiceBoxHoverCSS = '';
-	for (var i = 0, keys = Object.keys(cadv.choiceBoxHover); i < keys.length; i++) {
-		var key = keys[i];
-		choiceBoxHoverCSS += (key + ':' + cadv.choiceBoxHover[key] + ';');
-	}
-	choiceBoxHoverCSS = 'div.choice.hovered{' + choiceBoxHoverCSS + '}';
-	
-	// Default CSS settings for all browsers
-	$('head').prepend('<style>*{padding:0;margin:0;}::-webkit-scrollbar{display: none;}canvas{vertical-align:top;}.pointer{cursor:pointer;}' + textOutCSS + choiceBoxCSS + choiceBoxHoverCSS + '</style>');
-	
-	var timer = setInterval(function() {
-		if ((Object.keys(preload.images).length + Object.keys(preload.audios).length + Object.keys(preload.videos).length - loadErrors) == (Object.keys(resources.images).length + Object.keys(resources.audios).length + Object.keys(resources.videos).length)) {
-			clearTimeout(timer);
-			
-			// Create Text Output
-			var newDiv = document.createElement('div');
-			newDiv.id = 'textout';
-			
-			$('body').append(newDiv);
-			cadv.system.textselector = $('div#textout');
-			
-			// If autoscaling enabled
-			if (cadv.system.autoscale) {
-				cadv.performScaling();
-			}
-			
-			if (callback !== undefined && typeof(callback) == 'function') {
-				callback();
-			} else {
-				// Ladies and Gentlemen, start your engines!
-				//cadv.start();
-			}
-			
-		}
-	}, 500);
-	
-	
-};
-
-// CADV Utilities
-// EYE Related
-cadv.startWink = function() {
-	
-};
-
-// MOUTH Related
-cadv.enableTextlip = function() {
-	
-};
-
-// Work In Progress
-// cadv.enableAudiolip = function() {};
-
-// CLIPPING Related
-
-// TEXT Related
-cadv.textWriter = function(inputString) {
-	
-	// var textvisual = BADV.textvisual;
-	// var outputElement = textvisual._outputElement;
-	var inputLength = inputString.length;
-	var textPosition = 0;
-	var writerTimer = null;
-	
-	/*
-	var doLipSync = false;
-	if (lipElement !== undefined) {
-		doLipSync = true;
-	}
-	//*/
-	
-	function outputText() {
-		// FIXME: Might hang if tag not closed
-		switch(inputLength.charAt(textPosition)) {
-			case '<':
-				// Tag Striper (example: <span>)
-				while(inputLength.charAt(textPosition) != '>') {
-					textPosition++;
-				}
-				break;
-			case '&':
-				// HTML Symbol Skipper (example: &amp;)
-				while(inputLength.charAt(textPosition) != ';') {
-					textPosition++;
-				}
-				break;
-			default:
-				// Add Position Value
-				textPosition++;
-				break;
-		}
-		
-		$(outputElement).html(inputString.substring(0, textPosition));
-		
-		// Experimental Lip Sync
-		/*
-		if (doLipSync) {
-			var currentChar = inputString.charAt(textPosition);
-			var lipPos = 0;
-			var lipHeight = parseInt($(lipElement).css('height') / 6); // Auto Detect
-			if (textvisual._aLip.indexOf(currentChar) !== -1) {
-				lipPos = 1;
-			} else if (textvisual._iLip.indexOf(currentChar) !== -1) {
-				lipPos = 2;
-			} else if (textvisual._uLip.indexOf(currentChar) !== -1) {
-				lipPos = 3;
-			} else if (textvisual._eLip.indexOf(currentChar) !== -1) {
-				lipPos = 4;
-			} else if (textvisual._oLip.indexOf(currentChar) !== -1) {
-				lipPos = 5;
-			}
-			$(lipElement).css('background-position', '0px ' + (lipPos * -lipHeight) + 'px');
-		}
-		//*/
-		
-		// Break Condition
-		if (textPosition == inputLength || false) { // textvisual._outputingText == false) {
-			$(outputElement).html(inputString.substring(0, inputLength)); // Complete text
-			textvisual._outputingText = false;
-			
-			// Show Button?
-			//showButton();
-			
-			/*
-			setTimeout(function() {
-				$(lipElement).css('background-position', '0px 0px');
-			}, BADV.config._intervalPerFrame);
-			//*/
-			
-			// Delete variable to lessen memory consumption
-			// FIXME: (Not helping at all?, Remove?)
-			delete inputLength;
-			delete textPosition;
-			delete writerTimer;
-		} else {
-			// Call again.
-			writerTimer = setTimeout(outputText, Math.floor(1000 / cadv.system.textspeed));
-		}
-	}
-	
-	// textvisual._outputingText = true;
-	writerTimer = setTimeout(outputText, Math.floor(1000 / cadv.system.textspeed));
-	//*/
-};
-
-////////////////////
-// Event Listeners
-////////////////////
-//<< KEYBOARD >>//
-window.onresize = function(eventObj) {
-	eventObj.preventDefault(); // DOM2
-	if (cadv.system.autoscale) {
-		cadv.performScaling();
-	}
-	cadv.setPosition();
-};
-
-window.onkeydown = function(eventObj) {
-	eventObj.preventDefault(); // DOM2
-	var keyLocation = eventObj.location;
-	var whichKey = eventObj.which;
-	
-	switch(whichKey) {
-		case 27:
-			// Escape: Main Menu
-			break;
-		case 13:
-			// Enter Key: Next Script, Decide
-			break;
-		case 32:
-			// Space: Show Hide Message & Window
-			break;
-		case 17:
-			if (keyLocation == KeyboardEvent.DOM_KEY_LOCATION_RIGHT) {
-				// Right Control: Skip mode
-			}
-			break;
-		case 38:
-			// Arrows(Up): Choose Selection
-			break;
-		case 40:
-			// Arrows(Down): Choose Selection
-			break;
-			
-			// TODO: Log Mode?
-			
-		default:
-			break;
-	}
-};
-
-window.onkeyup - function(eventObj) {
-	eventObj.preventDefault(); // DOM2
-	var keyLocation = eventObj.location;
-	var whichKey = eventObj.which;
-	
-	switch(whichKey) {
-		case 17:
-			if (keyLocation == KeyboardEvent.DOM_KEY_LOCATION_RIGHT) {
-				// Right Control: Disable Skip Mode
-			}
-			break;
-		default:
-			break;
-	}
-};
-
-//<< MOUSE >>//
-window.onmousedown = function(eventObj) {
-	eventObj.preventDefault(); // DOM2
-	var whichKey = eventObj.which;
-	
-	switch(whichKey) {
-		case 1:
-			// Left Click: Next Script, Decide
-			break;
-		default:
-			break;
-	}
-};
-
-document.onselectstart = function() {
-	// Disable Text Highlight
-	return false;
-};
-
-//<< GAMEPAD API? >>//
-// Work In Progress
-var cadvGamepad = null;
-var gpLoopTimer;
-window.addEventListener('gamepadconnected', function(eventObj) {
-	cadvGamepad = eventObj.gamepad;
-	gpLoopTimer = setInterval(function() {
-		
-		for (var i = 0, max = cadvGamepad.buttons.length; i < max; i++) {
-			console.log('Key ' + i + ' state: ' + cadvGamepad.buttons[i].pressed);
-		}
-		
-	}, 1000);
+  return {
+    x: x
+  };
 });
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2), __webpack_require__(3)(module)))
 
-window.addEventListener('gamepaddisconnected', function(eventObj) {
-	clearInterval(gpLoopTimer);
-	cadvGamepad = null;
-});
+/***/ }),
+/* 1 */
+/***/ (function(module, exports, __webpack_require__) {
 
-// jQuery PLUGINs
-/*
- * jQuery Easing v1.3 - http://gsgd.co.uk/sandbox/jquery/easing/
- *
- * Uses the built in easing capabilities added In jQuery 1.1
- * to offer multiple easing options
- *
- * TERMS OF USE - jQuery Easing
- * 
- * Open source under the BSD License. 
- * 
- * Copyright © 2008 George McGinley Smith
- * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without modification, 
- * are permitted provided that the following conditions are met:
- * 
- * Redistributions of source code must retain the above copyright notice, this list of 
- * conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice, this list 
- * of conditions and the following disclaimer in the documentation and/or other materials 
- * provided with the distribution.
- * 
- * Neither the name of the author nor the names of contributors may be used to endorse 
- * or promote products derived from this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY 
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- *  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- *  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED 
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
- * OF THE POSSIBILITY OF SUCH DAMAGE. 
- *
+/* WEBPACK VAR INJECTION */(function(global) {var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*
+ 2017 Julian Garnier
+ Released under the MIT license
 */
-jQuery.easing.jswing=jQuery.easing.swing;jQuery.extend(jQuery.easing,{def:"easeOutQuad",swing:function(e,f,a,h,g){return jQuery.easing[jQuery.easing.def](e,f,a,h,g)},easeInQuad:function(e,f,a,h,g){return h*(f/=g)*f+a},easeOutQuad:function(e,f,a,h,g){return -h*(f/=g)*(f-2)+a},easeInOutQuad:function(e,f,a,h,g){if((f/=g/2)<1){return h/2*f*f+a}return -h/2*((--f)*(f-2)-1)+a},easeInCubic:function(e,f,a,h,g){return h*(f/=g)*f*f+a},easeOutCubic:function(e,f,a,h,g){return h*((f=f/g-1)*f*f+1)+a},easeInOutCubic:function(e,f,a,h,g){if((f/=g/2)<1){return h/2*f*f*f+a}return h/2*((f-=2)*f*f+2)+a},easeInQuart:function(e,f,a,h,g){return h*(f/=g)*f*f*f+a},easeOutQuart:function(e,f,a,h,g){return -h*((f=f/g-1)*f*f*f-1)+a},easeInOutQuart:function(e,f,a,h,g){if((f/=g/2)<1){return h/2*f*f*f*f+a}return -h/2*((f-=2)*f*f*f-2)+a},easeInQuint:function(e,f,a,h,g){return h*(f/=g)*f*f*f*f+a},easeOutQuint:function(e,f,a,h,g){return h*((f=f/g-1)*f*f*f*f+1)+a},easeInOutQuint:function(e,f,a,h,g){if((f/=g/2)<1){return h/2*f*f*f*f*f+a}return h/2*((f-=2)*f*f*f*f+2)+a},easeInSine:function(e,f,a,h,g){return -h*Math.cos(f/g*(Math.PI/2))+h+a},easeOutSine:function(e,f,a,h,g){return h*Math.sin(f/g*(Math.PI/2))+a},easeInOutSine:function(e,f,a,h,g){return -h/2*(Math.cos(Math.PI*f/g)-1)+a},easeInExpo:function(e,f,a,h,g){return(f==0)?a:h*Math.pow(2,10*(f/g-1))+a},easeOutExpo:function(e,f,a,h,g){return(f==g)?a+h:h*(-Math.pow(2,-10*f/g)+1)+a},easeInOutExpo:function(e,f,a,h,g){if(f==0){return a}if(f==g){return a+h}if((f/=g/2)<1){return h/2*Math.pow(2,10*(f-1))+a}return h/2*(-Math.pow(2,-10*--f)+2)+a},easeInCirc:function(e,f,a,h,g){return -h*(Math.sqrt(1-(f/=g)*f)-1)+a},easeOutCirc:function(e,f,a,h,g){return h*Math.sqrt(1-(f=f/g-1)*f)+a},easeInOutCirc:function(e,f,a,h,g){if((f/=g/2)<1){return -h/2*(Math.sqrt(1-f*f)-1)+a}return h/2*(Math.sqrt(1-(f-=2)*f)+1)+a},easeInElastic:function(f,h,e,l,k){var i=1.70158;var j=0;var g=l;if(h==0){return e}if((h/=k)==1){return e+l}if(!j){j=k*0.3}if(g<Math.abs(l)){g=l;var i=j/4}else{var i=j/(2*Math.PI)*Math.asin(l/g)}return -(g*Math.pow(2,10*(h-=1))*Math.sin((h*k-i)*(2*Math.PI)/j))+e},easeOutElastic:function(f,h,e,l,k){var i=1.70158;var j=0;var g=l;if(h==0){return e}if((h/=k)==1){return e+l}if(!j){j=k*0.3}if(g<Math.abs(l)){g=l;var i=j/4}else{var i=j/(2*Math.PI)*Math.asin(l/g)}return g*Math.pow(2,-10*h)*Math.sin((h*k-i)*(2*Math.PI)/j)+l+e},easeInOutElastic:function(f,h,e,l,k){var i=1.70158;var j=0;var g=l;if(h==0){return e}if((h/=k/2)==2){return e+l}if(!j){j=k*(0.3*1.5)}if(g<Math.abs(l)){g=l;var i=j/4}else{var i=j/(2*Math.PI)*Math.asin(l/g)}if(h<1){return -0.5*(g*Math.pow(2,10*(h-=1))*Math.sin((h*k-i)*(2*Math.PI)/j))+e}return g*Math.pow(2,-10*(h-=1))*Math.sin((h*k-i)*(2*Math.PI)/j)*0.5+l+e},easeInBack:function(e,f,a,i,h,g){if(g==undefined){g=1.70158}return i*(f/=h)*f*((g+1)*f-g)+a},easeOutBack:function(e,f,a,i,h,g){if(g==undefined){g=1.70158}return i*((f=f/h-1)*f*((g+1)*f+g)+1)+a},easeInOutBack:function(e,f,a,i,h,g){if(g==undefined){g=1.70158}if((f/=h/2)<1){return i/2*(f*f*(((g*=(1.525))+1)*f-g))+a}return i/2*((f-=2)*f*(((g*=(1.525))+1)*f+g)+2)+a},easeInBounce:function(e,f,a,h,g){return h-jQuery.easing.easeOutBounce(e,g-f,0,h,g)+a},easeOutBounce:function(e,f,a,h,g){if((f/=g)<(1/2.75)){return h*(7.5625*f*f)+a}else{if(f<(2/2.75)){return h*(7.5625*(f-=(1.5/2.75))*f+0.75)+a}else{if(f<(2.5/2.75)){return h*(7.5625*(f-=(2.25/2.75))*f+0.9375)+a}else{return h*(7.5625*(f-=(2.625/2.75))*f+0.984375)+a}}}},easeInOutBounce:function(e,f,a,h,g){if(f<g/2){return jQuery.easing.easeInBounce(e,f*2,0,h,g)*0.5+a}return jQuery.easing.easeOutBounce(e,f*2-g,0,h,g)*0.5+h*0.5+a}});
-/*
- *
- * TERMS OF USE - EASING EQUATIONS
- * 
- * Open source under the BSD License. 
- * 
- * Copyright © 2001 Robert Penner
- * All rights reserved.
- * 
- * Redistribution and use in source and binary forms, with or without modification, 
- * are permitted provided that the following conditions are met:
- * 
- * Redistributions of source code must retain the above copyright notice, this list of 
- * conditions and the following disclaimer.
- * Redistributions in binary form must reproduce the above copyright notice, this list 
- * of conditions and the following disclaimer in the documentation and/or other materials 
- * provided with the distribution.
- * 
- * Neither the name of the author nor the names of contributors may be used to endorse 
- * or promote products derived from this software without specific prior written permission.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY 
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- *  EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
- *  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED 
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED 
- * OF THE POSSIBILITY OF SUCH DAMAGE. 
- *
- */
+var $jscomp={scope:{}};$jscomp.defineProperty="function"==typeof Object.defineProperties?Object.defineProperty:function(e,r,p){if(p.get||p.set)throw new TypeError("ES3 does not support getters and setters.");e!=Array.prototype&&e!=Object.prototype&&(e[r]=p.value)};$jscomp.getGlobal=function(e){return"undefined"!=typeof window&&window===e?e:"undefined"!=typeof global&&null!=global?global:e};$jscomp.global=$jscomp.getGlobal(this);$jscomp.SYMBOL_PREFIX="jscomp_symbol_";
+$jscomp.initSymbol=function(){$jscomp.initSymbol=function(){};$jscomp.global.Symbol||($jscomp.global.Symbol=$jscomp.Symbol)};$jscomp.symbolCounter_=0;$jscomp.Symbol=function(e){return $jscomp.SYMBOL_PREFIX+(e||"")+$jscomp.symbolCounter_++};
+$jscomp.initSymbolIterator=function(){$jscomp.initSymbol();var e=$jscomp.global.Symbol.iterator;e||(e=$jscomp.global.Symbol.iterator=$jscomp.global.Symbol("iterator"));"function"!=typeof Array.prototype[e]&&$jscomp.defineProperty(Array.prototype,e,{configurable:!0,writable:!0,value:function(){return $jscomp.arrayIterator(this)}});$jscomp.initSymbolIterator=function(){}};$jscomp.arrayIterator=function(e){var r=0;return $jscomp.iteratorPrototype(function(){return r<e.length?{done:!1,value:e[r++]}:{done:!0}})};
+$jscomp.iteratorPrototype=function(e){$jscomp.initSymbolIterator();e={next:e};e[$jscomp.global.Symbol.iterator]=function(){return this};return e};$jscomp.array=$jscomp.array||{};$jscomp.iteratorFromArray=function(e,r){$jscomp.initSymbolIterator();e instanceof String&&(e+="");var p=0,m={next:function(){if(p<e.length){var u=p++;return{value:r(u,e[u]),done:!1}}m.next=function(){return{done:!0,value:void 0}};return m.next()}};m[Symbol.iterator]=function(){return m};return m};
+$jscomp.polyfill=function(e,r,p,m){if(r){p=$jscomp.global;e=e.split(".");for(m=0;m<e.length-1;m++){var u=e[m];u in p||(p[u]={});p=p[u]}e=e[e.length-1];m=p[e];r=r(m);r!=m&&null!=r&&$jscomp.defineProperty(p,e,{configurable:!0,writable:!0,value:r})}};$jscomp.polyfill("Array.prototype.keys",function(e){return e?e:function(){return $jscomp.iteratorFromArray(this,function(e){return e})}},"es6-impl","es3");var $jscomp$this=this;
+(function(e,r){ true?!(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (r),
+				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
+				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__)):"object"===typeof module&&module.exports?module.exports=r():e.anime=r()})(this,function(){function e(a){if(!h.col(a))try{return document.querySelectorAll(a)}catch(c){}}function r(a,c){for(var d=a.length,b=2<=arguments.length?arguments[1]:void 0,f=[],n=0;n<d;n++)if(n in a){var k=a[n];c.call(b,k,n,a)&&f.push(k)}return f}function p(a){return a.reduce(function(a,d){return a.concat(h.arr(d)?p(d):d)},[])}function m(a){if(h.arr(a))return a;
+h.str(a)&&(a=e(a)||a);return a instanceof NodeList||a instanceof HTMLCollection?[].slice.call(a):[a]}function u(a,c){return a.some(function(a){return a===c})}function C(a){var c={},d;for(d in a)c[d]=a[d];return c}function D(a,c){var d=C(a),b;for(b in a)d[b]=c.hasOwnProperty(b)?c[b]:a[b];return d}function z(a,c){var d=C(a),b;for(b in c)d[b]=h.und(a[b])?c[b]:a[b];return d}function T(a){a=a.replace(/^#?([a-f\d])([a-f\d])([a-f\d])$/i,function(a,c,d,k){return c+c+d+d+k+k});var c=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(a);
+a=parseInt(c[1],16);var d=parseInt(c[2],16),c=parseInt(c[3],16);return"rgba("+a+","+d+","+c+",1)"}function U(a){function c(a,c,b){0>b&&(b+=1);1<b&&--b;return b<1/6?a+6*(c-a)*b:.5>b?c:b<2/3?a+(c-a)*(2/3-b)*6:a}var d=/hsl\((\d+),\s*([\d.]+)%,\s*([\d.]+)%\)/g.exec(a)||/hsla\((\d+),\s*([\d.]+)%,\s*([\d.]+)%,\s*([\d.]+)\)/g.exec(a);a=parseInt(d[1])/360;var b=parseInt(d[2])/100,f=parseInt(d[3])/100,d=d[4]||1;if(0==b)f=b=a=f;else{var n=.5>f?f*(1+b):f+b-f*b,k=2*f-n,f=c(k,n,a+1/3),b=c(k,n,a);a=c(k,n,a-1/3)}return"rgba("+
+255*f+","+255*b+","+255*a+","+d+")"}function y(a){if(a=/([\+\-]?[0-9#\.]+)(%|px|pt|em|rem|in|cm|mm|ex|ch|pc|vw|vh|vmin|vmax|deg|rad|turn)?$/.exec(a))return a[2]}function V(a){if(-1<a.indexOf("translate")||"perspective"===a)return"px";if(-1<a.indexOf("rotate")||-1<a.indexOf("skew"))return"deg"}function I(a,c){return h.fnc(a)?a(c.target,c.id,c.total):a}function E(a,c){if(c in a.style)return getComputedStyle(a).getPropertyValue(c.replace(/([a-z])([A-Z])/g,"$1-$2").toLowerCase())||"0"}function J(a,c){if(h.dom(a)&&
+u(W,c))return"transform";if(h.dom(a)&&(a.getAttribute(c)||h.svg(a)&&a[c]))return"attribute";if(h.dom(a)&&"transform"!==c&&E(a,c))return"css";if(null!=a[c])return"object"}function X(a,c){var d=V(c),d=-1<c.indexOf("scale")?1:0+d;a=a.style.transform;if(!a)return d;for(var b=[],f=[],n=[],k=/(\w+)\((.+?)\)/g;b=k.exec(a);)f.push(b[1]),n.push(b[2]);a=r(n,function(a,b){return f[b]===c});return a.length?a[0]:d}function K(a,c){switch(J(a,c)){case "transform":return X(a,c);case "css":return E(a,c);case "attribute":return a.getAttribute(c)}return a[c]||
+0}function L(a,c){var d=/^(\*=|\+=|-=)/.exec(a);if(!d)return a;var b=y(a)||0;c=parseFloat(c);a=parseFloat(a.replace(d[0],""));switch(d[0][0]){case "+":return c+a+b;case "-":return c-a+b;case "*":return c*a+b}}function F(a,c){return Math.sqrt(Math.pow(c.x-a.x,2)+Math.pow(c.y-a.y,2))}function M(a){a=a.points;for(var c=0,d,b=0;b<a.numberOfItems;b++){var f=a.getItem(b);0<b&&(c+=F(d,f));d=f}return c}function N(a){if(a.getTotalLength)return a.getTotalLength();switch(a.tagName.toLowerCase()){case "circle":return 2*
+Math.PI*a.getAttribute("r");case "rect":return 2*a.getAttribute("width")+2*a.getAttribute("height");case "line":return F({x:a.getAttribute("x1"),y:a.getAttribute("y1")},{x:a.getAttribute("x2"),y:a.getAttribute("y2")});case "polyline":return M(a);case "polygon":var c=a.points;return M(a)+F(c.getItem(c.numberOfItems-1),c.getItem(0))}}function Y(a,c){function d(b){b=void 0===b?0:b;return a.el.getPointAtLength(1<=c+b?c+b:0)}var b=d(),f=d(-1),n=d(1);switch(a.property){case "x":return b.x;case "y":return b.y;
+case "angle":return 180*Math.atan2(n.y-f.y,n.x-f.x)/Math.PI}}function O(a,c){var d=/-?\d*\.?\d+/g,b;b=h.pth(a)?a.totalLength:a;if(h.col(b))if(h.rgb(b)){var f=/rgb\((\d+,\s*[\d]+,\s*[\d]+)\)/g.exec(b);b=f?"rgba("+f[1]+",1)":b}else b=h.hex(b)?T(b):h.hsl(b)?U(b):void 0;else f=(f=y(b))?b.substr(0,b.length-f.length):b,b=c&&!/\s/g.test(b)?f+c:f;b+="";return{original:b,numbers:b.match(d)?b.match(d).map(Number):[0],strings:h.str(a)||c?b.split(d):[]}}function P(a){a=a?p(h.arr(a)?a.map(m):m(a)):[];return r(a,
+function(a,d,b){return b.indexOf(a)===d})}function Z(a){var c=P(a);return c.map(function(a,b){return{target:a,id:b,total:c.length}})}function aa(a,c){var d=C(c);if(h.arr(a)){var b=a.length;2!==b||h.obj(a[0])?h.fnc(c.duration)||(d.duration=c.duration/b):a={value:a}}return m(a).map(function(a,b){b=b?0:c.delay;a=h.obj(a)&&!h.pth(a)?a:{value:a};h.und(a.delay)&&(a.delay=b);return a}).map(function(a){return z(a,d)})}function ba(a,c){var d={},b;for(b in a){var f=I(a[b],c);h.arr(f)&&(f=f.map(function(a){return I(a,
+c)}),1===f.length&&(f=f[0]));d[b]=f}d.duration=parseFloat(d.duration);d.delay=parseFloat(d.delay);return d}function ca(a){return h.arr(a)?A.apply(this,a):Q[a]}function da(a,c){var d;return a.tweens.map(function(b){b=ba(b,c);var f=b.value,e=K(c.target,a.name),k=d?d.to.original:e,k=h.arr(f)?f[0]:k,w=L(h.arr(f)?f[1]:f,k),e=y(w)||y(k)||y(e);b.from=O(k,e);b.to=O(w,e);b.start=d?d.end:a.offset;b.end=b.start+b.delay+b.duration;b.easing=ca(b.easing);b.elasticity=(1E3-Math.min(Math.max(b.elasticity,1),999))/
+1E3;b.isPath=h.pth(f);b.isColor=h.col(b.from.original);b.isColor&&(b.round=1);return d=b})}function ea(a,c){return r(p(a.map(function(a){return c.map(function(b){var c=J(a.target,b.name);if(c){var d=da(b,a);b={type:c,property:b.name,animatable:a,tweens:d,duration:d[d.length-1].end,delay:d[0].delay}}else b=void 0;return b})})),function(a){return!h.und(a)})}function R(a,c,d,b){var f="delay"===a;return c.length?(f?Math.min:Math.max).apply(Math,c.map(function(b){return b[a]})):f?b.delay:d.offset+b.delay+
+b.duration}function fa(a){var c=D(ga,a),d=D(S,a),b=Z(a.targets),f=[],e=z(c,d),k;for(k in a)e.hasOwnProperty(k)||"targets"===k||f.push({name:k,offset:e.offset,tweens:aa(a[k],d)});a=ea(b,f);return z(c,{children:[],animatables:b,animations:a,duration:R("duration",a,c,d),delay:R("delay",a,c,d)})}function q(a){function c(){return window.Promise&&new Promise(function(a){return p=a})}function d(a){return g.reversed?g.duration-a:a}function b(a){for(var b=0,c={},d=g.animations,f=d.length;b<f;){var e=d[b],
+k=e.animatable,h=e.tweens,n=h.length-1,l=h[n];n&&(l=r(h,function(b){return a<b.end})[0]||l);for(var h=Math.min(Math.max(a-l.start-l.delay,0),l.duration)/l.duration,w=isNaN(h)?1:l.easing(h,l.elasticity),h=l.to.strings,p=l.round,n=[],m=void 0,m=l.to.numbers.length,t=0;t<m;t++){var x=void 0,x=l.to.numbers[t],q=l.from.numbers[t],x=l.isPath?Y(l.value,w*x):q+w*(x-q);p&&(l.isColor&&2<t||(x=Math.round(x*p)/p));n.push(x)}if(l=h.length)for(m=h[0],w=0;w<l;w++)p=h[w+1],t=n[w],isNaN(t)||(m=p?m+(t+p):m+(t+" "));
+else m=n[0];ha[e.type](k.target,e.property,m,c,k.id);e.currentValue=m;b++}if(b=Object.keys(c).length)for(d=0;d<b;d++)H||(H=E(document.body,"transform")?"transform":"-webkit-transform"),g.animatables[d].target.style[H]=c[d].join(" ");g.currentTime=a;g.progress=a/g.duration*100}function f(a){if(g[a])g[a](g)}function e(){g.remaining&&!0!==g.remaining&&g.remaining--}function k(a){var k=g.duration,n=g.offset,w=n+g.delay,r=g.currentTime,x=g.reversed,q=d(a);if(g.children.length){var u=g.children,v=u.length;
+if(q>=g.currentTime)for(var G=0;G<v;G++)u[G].seek(q);else for(;v--;)u[v].seek(q)}if(q>=w||!k)g.began||(g.began=!0,f("begin")),f("run");if(q>n&&q<k)b(q);else if(q<=n&&0!==r&&(b(0),x&&e()),q>=k&&r!==k||!k)b(k),x||e();f("update");a>=k&&(g.remaining?(t=h,"alternate"===g.direction&&(g.reversed=!g.reversed)):(g.pause(),g.completed||(g.completed=!0,f("complete"),"Promise"in window&&(p(),m=c()))),l=0)}a=void 0===a?{}:a;var h,t,l=0,p=null,m=c(),g=fa(a);g.reset=function(){var a=g.direction,c=g.loop;g.currentTime=
+0;g.progress=0;g.paused=!0;g.began=!1;g.completed=!1;g.reversed="reverse"===a;g.remaining="alternate"===a&&1===c?2:c;b(0);for(a=g.children.length;a--;)g.children[a].reset()};g.tick=function(a){h=a;t||(t=h);k((l+h-t)*q.speed)};g.seek=function(a){k(d(a))};g.pause=function(){var a=v.indexOf(g);-1<a&&v.splice(a,1);g.paused=!0};g.play=function(){g.paused&&(g.paused=!1,t=0,l=d(g.currentTime),v.push(g),B||ia())};g.reverse=function(){g.reversed=!g.reversed;t=0;l=d(g.currentTime)};g.restart=function(){g.pause();
+g.reset();g.play()};g.finished=m;g.reset();g.autoplay&&g.play();return g}var ga={update:void 0,begin:void 0,run:void 0,complete:void 0,loop:1,direction:"normal",autoplay:!0,offset:0},S={duration:1E3,delay:0,easing:"easeOutElastic",elasticity:500,round:0},W="translateX translateY translateZ rotate rotateX rotateY rotateZ scale scaleX scaleY scaleZ skewX skewY perspective".split(" "),H,h={arr:function(a){return Array.isArray(a)},obj:function(a){return-1<Object.prototype.toString.call(a).indexOf("Object")},
+pth:function(a){return h.obj(a)&&a.hasOwnProperty("totalLength")},svg:function(a){return a instanceof SVGElement},dom:function(a){return a.nodeType||h.svg(a)},str:function(a){return"string"===typeof a},fnc:function(a){return"function"===typeof a},und:function(a){return"undefined"===typeof a},hex:function(a){return/(^#[0-9A-F]{6}$)|(^#[0-9A-F]{3}$)/i.test(a)},rgb:function(a){return/^rgb/.test(a)},hsl:function(a){return/^hsl/.test(a)},col:function(a){return h.hex(a)||h.rgb(a)||h.hsl(a)}},A=function(){function a(a,
+d,b){return(((1-3*b+3*d)*a+(3*b-6*d))*a+3*d)*a}return function(c,d,b,f){if(0<=c&&1>=c&&0<=b&&1>=b){var e=new Float32Array(11);if(c!==d||b!==f)for(var k=0;11>k;++k)e[k]=a(.1*k,c,b);return function(k){if(c===d&&b===f)return k;if(0===k)return 0;if(1===k)return 1;for(var h=0,l=1;10!==l&&e[l]<=k;++l)h+=.1;--l;var l=h+(k-e[l])/(e[l+1]-e[l])*.1,n=3*(1-3*b+3*c)*l*l+2*(3*b-6*c)*l+3*c;if(.001<=n){for(h=0;4>h;++h){n=3*(1-3*b+3*c)*l*l+2*(3*b-6*c)*l+3*c;if(0===n)break;var m=a(l,c,b)-k,l=l-m/n}k=l}else if(0===
+n)k=l;else{var l=h,h=h+.1,g=0;do m=l+(h-l)/2,n=a(m,c,b)-k,0<n?h=m:l=m;while(1e-7<Math.abs(n)&&10>++g);k=m}return a(k,d,f)}}}}(),Q=function(){function a(a,b){return 0===a||1===a?a:-Math.pow(2,10*(a-1))*Math.sin(2*(a-1-b/(2*Math.PI)*Math.asin(1))*Math.PI/b)}var c="Quad Cubic Quart Quint Sine Expo Circ Back Elastic".split(" "),d={In:[[.55,.085,.68,.53],[.55,.055,.675,.19],[.895,.03,.685,.22],[.755,.05,.855,.06],[.47,0,.745,.715],[.95,.05,.795,.035],[.6,.04,.98,.335],[.6,-.28,.735,.045],a],Out:[[.25,
+.46,.45,.94],[.215,.61,.355,1],[.165,.84,.44,1],[.23,1,.32,1],[.39,.575,.565,1],[.19,1,.22,1],[.075,.82,.165,1],[.175,.885,.32,1.275],function(b,c){return 1-a(1-b,c)}],InOut:[[.455,.03,.515,.955],[.645,.045,.355,1],[.77,0,.175,1],[.86,0,.07,1],[.445,.05,.55,.95],[1,0,0,1],[.785,.135,.15,.86],[.68,-.55,.265,1.55],function(b,c){return.5>b?a(2*b,c)/2:1-a(-2*b+2,c)/2}]},b={linear:A(.25,.25,.75,.75)},f={},e;for(e in d)f.type=e,d[f.type].forEach(function(a){return function(d,f){b["ease"+a.type+c[f]]=h.fnc(d)?
+d:A.apply($jscomp$this,d)}}(f)),f={type:f.type};return b}(),ha={css:function(a,c,d){return a.style[c]=d},attribute:function(a,c,d){return a.setAttribute(c,d)},object:function(a,c,d){return a[c]=d},transform:function(a,c,d,b,f){b[f]||(b[f]=[]);b[f].push(c+"("+d+")")}},v=[],B=0,ia=function(){function a(){B=requestAnimationFrame(c)}function c(c){var b=v.length;if(b){for(var d=0;d<b;)v[d]&&v[d].tick(c),d++;a()}else cancelAnimationFrame(B),B=0}return a}();q.version="2.2.0";q.speed=1;q.running=v;q.remove=
+function(a){a=P(a);for(var c=v.length;c--;)for(var d=v[c],b=d.animations,f=b.length;f--;)u(a,b[f].animatable.target)&&(b.splice(f,1),b.length||d.pause())};q.getValue=K;q.path=function(a,c){var d=h.str(a)?e(a)[0]:a,b=c||100;return function(a){return{el:d,property:a,totalLength:N(d)*(b/100)}}};q.setDashoffset=function(a){var c=N(a);a.setAttribute("stroke-dasharray",c);return c};q.bezier=A;q.easings=Q;q.timeline=function(a){var c=q(a);c.pause();c.duration=0;c.add=function(d){c.children.forEach(function(a){a.began=
+!0;a.completed=!0});m(d).forEach(function(b){var d=z(b,D(S,a||{}));d.targets=d.targets||a.targets;b=c.duration;var e=d.offset;d.autoplay=!1;d.direction=c.direction;d.offset=h.und(e)?b:L(e,b);c.began=!0;c.completed=!0;c.seek(d.offset);d=q(d);d.began=!0;d.completed=!0;d.duration>b&&(c.duration=d.duration);c.children.push(d)});c.seek(0);c.reset();c.autoplay&&c.restart();return c};return c};q.random=function(a,c){return Math.floor(Math.random()*(c-a+1))+a};return q});
+/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2)))
 
-/*!
-* screenfull
-* v3.0.0 - 2015-11-24
-* https://github.com/sindresorhus/screenfull.js
-* (c) Sindre Sorhus; MIT License
-*/
-!function(){"use strict";var a="undefined"!=typeof module&&module.exports,b="undefined"!=typeof Element&&"ALLOW_KEYBOARD_INPUT"in Element,c=function(){for(var a,b,c=[["requestFullscreen","exitFullscreen","fullscreenElement","fullscreenEnabled","fullscreenchange","fullscreenerror"],["webkitRequestFullscreen","webkitExitFullscreen","webkitFullscreenElement","webkitFullscreenEnabled","webkitfullscreenchange","webkitfullscreenerror"],["webkitRequestFullScreen","webkitCancelFullScreen","webkitCurrentFullScreenElement","webkitCancelFullScreen","webkitfullscreenchange","webkitfullscreenerror"],["mozRequestFullScreen","mozCancelFullScreen","mozFullScreenElement","mozFullScreenEnabled","mozfullscreenchange","mozfullscreenerror"],["msRequestFullscreen","msExitFullscreen","msFullscreenElement","msFullscreenEnabled","MSFullscreenChange","MSFullscreenError"]],d=0,e=c.length,f={};e>d;d++)if(a=c[d],a&&a[1]in document){for(d=0,b=a.length;b>d;d++)f[c[0][d]]=a[d];return f}return!1}(),d={request:function(a){var d=c.requestFullscreen;a=a||document.documentElement,/5\.1[\.\d]* Safari/.test(navigator.userAgent)?a[d]():a[d](b&&Element.ALLOW_KEYBOARD_INPUT)},exit:function(){document[c.exitFullscreen]()},toggle:function(a){this.isFullscreen?this.exit():this.request(a)},raw:c};return c?(Object.defineProperties(d,{isFullscreen:{get:function(){return Boolean(document[c.fullscreenElement])}},element:{enumerable:!0,get:function(){return document[c.fullscreenElement]}},enabled:{enumerable:!0,get:function(){return Boolean(document[c.fullscreenEnabled])}}}),void(a?module.exports=d:window.screenfull=d)):void(a?module.exports=!1:window.screenfull=!1)}();
+/***/ }),
+/* 2 */
+/***/ (function(module, exports) {
 
-// END OF FILE
+var g;
+
+// This works in non-strict mode
+g = (function() {
+	return this;
+})();
+
+try {
+	// This works if eval is allowed (see CSP)
+	g = g || Function("return this")() || (1,eval)("this");
+} catch(e) {
+	// This works if the window reference is available
+	if(typeof window === "object")
+		g = window;
+}
+
+// g can still be undefined, but nothing to do about it...
+// We return undefined, instead of nothing here, so it's
+// easier to handle this case. if(!global) { ...}
+
+module.exports = g;
+
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports) {
+
+module.exports = function(module) {
+	if(!module.webpackPolyfill) {
+		module.deprecate = function() {};
+		module.paths = [];
+		// module.parent = undefined by default
+		if(!module.children) module.children = [];
+		Object.defineProperty(module, "loaded", {
+			enumerable: true,
+			get: function() {
+				return module.l;
+			}
+		});
+		Object.defineProperty(module, "id", {
+			enumerable: true,
+			get: function() {
+				return module.i;
+			}
+		});
+		module.webpackPolyfill = 1;
+	}
+	return module;
+};
+
+
+/***/ })
+/******/ ]);

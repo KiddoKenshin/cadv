@@ -1,0 +1,32 @@
+{
+  "name": "cadv",
+  "version": "0.1.0",
+  "description": "Canvas ADV game engine",
+  "main": "cadv.js",
+  "scripts": {
+    "build": "cross-env NODE_ENV=development webpack --progress --hide-modules --config=webpack.config.js",
+    "watch": "cross-env NODE_ENV=development webpack --watch --progress --hide-modules --config=webpack.config.js",
+    "build-prod": "cross-env NODE_ENV=production webpack --progress --hide-modules --config=webpack.config.js",
+    "watch-prod": "cross-env NODE_ENV=production webpack --watch --progress --hide-modules --config=webpack.config.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KiddoKenshin/cadv.git"
+  },
+  "author": "KiddoKenshin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/KiddoKenshin/cadv/issues"
+  },
+  "homepage": "https://github.com/KiddoKenshin/cadv#readme",
+  "devDependencies": {
+    "animejs": "^2.2.0",
+    "babel-cli": "^6.26.0",
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "babel-preset-es2015": "^6.24.1",
+    "cross-env": "^5.1.3",
+    "webpack": "^3.10.0"
+  }
+}
