@@ -1,4 +1,4 @@
-/*! Fri Jan 05 2018 17:13:21 GMT+0900 (JST) */
+/*! Fri Jan 05 2018 17:38:04 GMT+0900 (JST) */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -79,7 +79,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/**
+/*!
  * CADV - HTML5 "C"anvas based "ADV"enture game engine.
  * Just another Visual Novel game engine.
  * Visual Novel games are consider as "Adventure" games in Japan.
@@ -697,36 +697,36 @@ module.exports = function () {
   // Text Output
   ////////////////////
   // HTML5 Canvas do not recognize new lines, therefore using HTML/CSS features to output text.
-  var textOutCSS = {
-    position: 'absolute',
-    'font-family': 'Meiryo UI, Hiragino Maru Gothic ProN',
-    'font-size': '16px',
-    'line-height': '16px',
-    left: '16px',
-    top: '16px',
-    color: '#FFFAFA',
-    overflow: 'visible',
-    cursor: 'default'
-  };
-
-  var choiceBoxCSS = {
-    width: '240px',
-    height: '48px',
-    color: '#111111',
-    'text-align': 'center',
-    'line-height': '48px',
-    border: 'solid 1px #999999',
-    'border-radius': '4px',
-    margin: '12px 0 12px',
-    cursor: 'default',
-    opacity: '0'
-  };
-
-  var choiceBoxHoverCSS = {
-    'font-size': '1.125em',
-    color: '#666666',
-    border: 'solid 1px #7777FF',
-    opacity: '0.9'
+  var cssStorages = {
+    textOutCSS: {
+      position: 'absolute',
+      'font-family': 'Meiryo UI, Hiragino Maru Gothic ProN',
+      'font-size': '16px',
+      'line-height': '16px',
+      left: '16px',
+      top: '16px',
+      color: '#FFFAFA',
+      overflow: 'visible',
+      cursor: 'default'
+    },
+    choiceBoxCSS: {
+      width: '240px',
+      height: '48px',
+      color: '#111111',
+      'text-align': 'center',
+      'line-height': '48px',
+      border: 'solid 1px #999999',
+      'border-radius': '4px',
+      margin: '12px 0 12px',
+      cursor: 'default',
+      opacity: '0'
+    },
+    choiceBoxHoverCSS: {
+      'font-size': '1.125em',
+      color: '#666666',
+      border: 'solid 1px #7777FF',
+      opacity: '0.9'
+    }
   };
 
   /**
@@ -744,14 +744,11 @@ module.exports = function () {
     }
 
     if (propertyValue === undefined || propertyValue === null || propertyValue === '') {
-      eval('delete ' + componentName + "CSS['" + propertyName + "'];");
+      delete cssStorages[componentName + 'CSS'][propertyName];
     } else {
-      eval(componentName + "CSS['" + propertyName + "'] = '" + propertyValue + "';");
+      cssStorages[componentName + 'CSS'][propertyName] = propertyValue;
     }
-
-    // TODO: Avoid using eval. // window[componentName], this[componentName]
-    // return this[componentName + 'CSS'];
-    return eval(componentName + 'CSS');
+    return cssStorages[componentName + 'CSS'];
   };
 
   ////////////////////
@@ -1193,7 +1190,6 @@ module.exports = function () {
           textPosition += 1;
           break;
       }
-
       // system.textSelector.html(inputString.substring(0, textPosition));
 
       // Break Condition
@@ -1203,12 +1199,6 @@ module.exports = function () {
 
         // Show Button?
         // showButton();
-
-        // Delete variable to lessen memory consumption
-        // FIXME: (Not helping at all?, Remove?)
-        // delete inputLength;
-        // delete textPosition;
-        // delete writerTimer;
       } else {
         // Call again.
         writerTimer = setTimeout(outputText, Math.floor(1000 / system.textSpeed));
