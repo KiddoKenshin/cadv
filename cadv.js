@@ -1,4 +1,15 @@
-/******/ (function(modules) { // webpackBootstrap
+/*! Fri Jan 05 2018 14:34:49 GMT+0900 (JST) */
+(function webpackUniversalModuleDefinition(root, factory) {
+	if(typeof exports === 'object' && typeof module === 'object')
+		module.exports = factory();
+	else if(typeof define === 'function' && define.amd)
+		define([], factory);
+	else if(typeof exports === 'object')
+		exports["cadv"] = factory();
+	else
+		root["cadv"] = factory();
+})(typeof self !== 'undefined' ? self : this, function() {
+return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
 /******/
@@ -68,41 +79,1250 @@
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/* WEBPACK VAR INJECTION */(function(global, module) {var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;
+/**!
+ * CADV - HTML5 "C"anvas based "ADV"enture game engine.
+ * Just another Visual Novel game engine.
+ * Visual Novel games are consider as "Adventure" games in Japan.
+ *
+ * Migrating to ES6.
+ *
+ * Supported Browsers:
+ * WebKit / WebEngine based Browsers, Gecko based Browsers
+ * (IE / Edge not supported, Safari also not supported)
+ *
+ * Audio format:
+ * Suggests WebM Vorbis, or WebM Opus.
+ * Please check the browser's codec support.
+ *
+ * Video format:
+ * Suggests WebM-VP9.
+ * Please check the browser's codec support.
+ *
+ * Bundled Library / Plugin:
+ * AnimeJS
+ * ScreenFull
+ *
+ * @author KiddoKenshin @ K2-R&D.com
+ * @since 2012/04/01, RE: 2013/01/17, TRE: 2013/12/13, C-ADV: 2014/05/26
+ * @version -WORK IN PROGRESS-
+ *
+ * Current Progress: Make it work again!
+ *
+ * Rough DEMO using CADV: http://furi2purei.com/index.min.html
+//*/
 
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
 
 var _animejs = __webpack_require__(1);
 
 var _animejs2 = _interopRequireDefault(_animejs);
 
+var _screenfull = __webpack_require__(3);
+
+var _screenfull2 = _interopRequireDefault(_screenfull);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-(function (root, factory) {
-  if (root === window || root === global) {
-    root.cadv = factory();
-    console.log('Browser / Node');
-  } else if (( false ? 'undefined' : _typeof(module)) === 'object' && module.exports) {
-    module.exports = factory();
-    console.log('ES Module');
-  } else if (true) {
-    !(__WEBPACK_AMD_DEFINE_ARRAY__ = [], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
-				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
-				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
-				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
-    console.log('Anonymous Module');
-  } else {
-    console.log('Not suppose to happen...');
-  }
-})(window || global || module || {}, function () {
+module.exports = function () {
 
-  var x = 0;
+  ////////////////////
+  // Setting & Utils
+  ////////////////////
+  // System Settings, can be modify to suit user's needs
+  var system = {
+    'debug': false, // Debug mode
+    'stopOnError': true, // Stop engine when error occured
+    'title': 'Canvas_Adventure_Engine', // Rename-able
+    'version': '', // Set by user, to check save files?
+    'width': 1280, // Game Width
+    'height': 720, // Game Height
+    'defaultBgColor': '#000000', // Default background color
+    'screenScale': 1.0, // Screen Scaling (Game size / Screen size), Renew Scaling whenever Screen size changed
+    'autoScale': false, // Perform auto scaling (Fit to screen)
 
-  return {
-    x: x
+    'textSelector': undefined, // jQuery Object, Will be occupied after created.
+    'textSpeed': 30, // fps
+
+    'useAudio': false, // Web Audio API and other Audio related stuff
+    'masterVolume': 1, // MASTER Volume
+    'bgmVolume': 1, // BGM Volume
+    'sfxVolume': 1, // SFX Volume
+    'voiceVolume': 1, // VOICE Volume
+
+    'videoVolume': 1 // Video Volume
   };
-});
-/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(2), __webpack_require__(3)(module)))
+
+  /**
+   * Get specified system setting.
+   *
+   * @param string keyName | The name of the setting
+   * @return mixed(boolean, int, float, string, null when invalid)
+   */
+  var getSystemSetting = function getSystemSetting(keyName) {
+    if (system[keyName] === undefined) {
+      return null;
+    }
+    return system[keyName];
+  };
+
+  /**
+   * Set specified system setting.
+   *
+   * @param string keyName | The name of the setting
+   * @param string value | The value for the setting
+   * @return mixed(boolean, int, float, string, null when invalid)
+   */
+  var setSystemSetting = function setSystemSetting(keyName, value) {
+    // TODO: Validate value?
+    if (system[keyName] === undefined) {
+      return null;
+    }
+    system[keyName] = value;
+    return system[keyName];
+  };
+
+  /**
+   * Detects mobile device via user agent.
+   *
+   * @return boolean
+   */
+  var mobile = void 0;
+  var isMobile = function isMobile() {
+    if (mobile == undefined) {
+      mobile = false;
+      if (navigator.userAgent.match(/(iPad|iPhone|iPod|Android|android)/g)) {
+        mobile = true;
+      }
+    }
+    return mobile;
+  };
+
+  /**
+   * Acquire current datetime.
+   * (For server interactions)
+   *
+   * @return string
+   */
+  var getYmdHis = function getYmdHis() {
+    var date = new Date();
+    return date.getFullYear() + ('0' + (date.getMonth() + 1)).slice(-2) + ('0' + date.getDate()).slice(-2) + ('0' + date.getHours()).slice(-2) + ('0' + date.getMinutes()).slice(-2) + ('0' + date.getSeconds()).slice(-2);
+  };
+
+  /**
+   * Display logs in console. Mostly for debugging purpose.
+   *
+   * @param string message | String to be output in console.
+   * @param boolean force | Outputs to console despite of not debug mode.
+   * @return void
+   */
+  var log = function log(message, force) {
+    if (system.debug || force === true) {
+      console.log(message);
+    }
+  };
+
+  /**
+   * Throws an error. Most probably the best way to stop anything moving.
+   *
+   * @param string message | The error message
+   * @return void
+   */
+  var error = function error(message) {
+    alert('Error occured, unable to proceed.');
+    throw Error(message);
+  };
+
+  ////////////////////
+  // States
+  ////////////////////
+  // Engine's letious states, only to be overwritten by system.
+  var states = {
+    'iDBInit': false,
+    'startedPreload': false,
+    'canvasRefresh': false,
+    'outputingText': false
+  };
+
+  ////////////////////
+  // Indexed DB
+  ////////////////////
+  // local storage for contents. Might not work with private mode.
+  var iDBObject = null;
+
+  /**
+   * Initialize Indexed DB to be used as local content manager. (Async)
+   *
+   * @returns void
+   */
+  var iDBInit = function iDBInit() {
+    iDBObject = null;
+    if (!window.indexedDB) {
+      log('Indexed DB not available');
+      states.iDBInit = true;
+      return;
+    }
+
+    var dbRequest = indexedDB.open('CADV_DB', 1); // Doesn't work in FireFox during Private Mode.
+    dbRequest.onupgradeneeded = function (event) {
+      // createObjectStore only works in OnUpgradeNeeded
+      log('Initializing DB...');
+      iDBObject = dbRequest.result;
+      if (!iDBObject.objectStoreNames.contains('imageStorage')) {
+        iDBObject.createObjectStore('imageStorage');
+        log('imageStorage Created');
+      }
+      if (!iDBObject.objectStoreNames.contains('audioStorage')) {
+        iDBObject.createObjectStore('audioStorage');
+        log('audioStorage Created');
+      }
+      if (!iDBObject.objectStoreNames.contains('videoStorage')) {
+        iDBObject.createObjectStore('videoStorage');
+        log('videoStorage Created');
+      }
+    };
+    dbRequest.onsuccess = function (event) {
+      iDBObject = dbRequest.result;
+      states.iDBInit = true;
+      log('DB Opened!');
+    };
+    dbRequest.onerror = function (event) {
+      states.iDBInit = true;
+      log('DB Failed!');
+    };
+  };
+
+  /**
+   * Stores data to Indexed DB for later usage. (Async)
+   *
+   * @param string resourceType | images, audios, videos
+   * @param string uid | unique id to be use later
+   * @param ArrayBuufer/Blob dataObject | the data to be store
+   * @returns void
+   */
+  var storeToIndexedDB = function storeToIndexedDB(resourceType, uid, dataObject) {
+    if (iDBObject == null) {
+      log('iDB not available');
+      return;
+    }
+
+    var useStorage = resourceType.substring(0, resourceType.length - 1) + 'Storage';
+    var dbTransactions = iDBObject.transaction([useStorage], 'readwrite');
+    var dbStorage = dbTransactions.objectStore(useStorage);
+    var storeRequest = dbStorage.put(dataObject, uid);
+    storeRequest.onsuccess = function (event) {
+      log(uid + '(' + resourceType + ') stored.');
+    };
+    storeRequest.onerror = function (event) {
+      log(uid + '(' + resourceType + ') error while put into DB.');
+    };
+  };
+
+  /**
+   * Retrieves data from Indexed DB. (Async)
+   *
+   * @param string resourceType | images, audios, videos
+   * @param string uid | unique id to be use later
+   * @param function callback | refer to storageCallback in cadv.startPreloadResources
+   * @returns void
+   */
+  var getFromIndexedDB = function getFromIndexedDB(resourceType, uid, callback) {
+    if (iDBObject == null) {
+      log('iDB not available');
+      callback(resourceType, uid, null);
+      return;
+    }
+
+    var useStorage = resourceType.substring(0, resourceType.length - 1) + 'Storage';
+    var dbTransactions = iDBObject.transaction([useStorage], 'readonly');
+    var dbStorage = dbTransactions.objectStore(useStorage);
+    var storeRequest = dbStorage.get(uid);
+    storeRequest.onsuccess = function (event) {
+      log(uid + '(' + resourceType + ') loaded.');
+      callback(resourceType, uid, storeRequest.result);
+    };
+    storeRequest.onerror = function (event) {
+      log(uid + '(' + resourceType + ') failed on retrieving.');
+      callback(resourceType, uid, null);
+    };
+  };
+
+  /**
+   * Remove data from Indexed DB. (Async)
+   *
+   * @param string resourceType | images, audios, videos
+   * @param string uid | unique id for data to be removed
+   * @return void
+   */
+  var removeFromIndexedDB = function removeFromIndexedDB(resourceType, uid) {
+    if (iDBObject == null) {
+      log('iDB not available');
+      return;
+    }
+
+    var useStorage = resourceType + 'Storage';
+    var dbTransactions = iDBObject.transaction([useStorage], 'readwrite');
+    var dbStorage = dbTransactions.objectStore(useStorage);
+    var storeRequest = dbStorage.delete(uid);
+    storeRequest.onsuccess = function (event) {
+      log(uid + '(' + resourceType + ') deleted.');
+    };
+    storeRequest.onerror = function (event) {
+      log(uid + '(' + resourceType + ') error on deleting.');
+    };
+  };
+
+  /**
+   * Clear all Indexed DB
+   *
+   * @return void
+   */
+  var clearIndexedDB = function clearIndexedDB() {
+    var dbRequest = indexedDB.deleteDatabase('CADV_DB');
+    dbRequest.onsuccess = function () {
+      states.iDBInit = false;
+      log('DB deleted successfully');
+      iDBInit();
+    };
+    dbRequest.onerror = function () {
+      log('Unable to delete DB');
+    };
+    dbRequest.onblocked = function () {
+      log('Unable to delete DB due to the operation being blocked');
+    };
+  };
+
+  ////////////////////
+  // Resources Util
+  ////////////////////
+  // Stores resource informations to be used later in game.
+  var preload = {
+    // Format store: {resourceID: resourceUrl}
+    'images': {},
+    'audios': {},
+    'videos': {}
+  };
+  var resources = {
+    'images': {}, // Image (From Blob)
+    'audios': {}, // AudioBuffer (From ArrayBuffer)
+    'videos': {} // Video (From Blob)
+  };
+
+  /**
+   * Add resource to preload list
+   *
+   * @param string resourceType | image, audio, video
+   * @param string resourceID | ID to be use later on manipulating them (Strict no multibyte string)
+   * @param string resourceURL | Source of Resource
+   * @return void
+   */
+  var addPreloadResource = function addPreloadResource(resourceType, resourceID, resourceURL) {
+    switch (resourceType) {
+      case 'image':
+        preload.images[resourceID] = resourceURL;
+        break;
+      case 'audio':
+        preload.audios[resourceID] = resourceURL;
+        break;
+      case 'video':
+        preload.videos[resourceID] = resourceURL;
+        break;
+      default:
+        var message = resourceType + ' is not a valid resource type!';
+        log(message);
+        if (system.stopOnError) {
+          error(message);
+        }
+        break;
+    }
+    log(resourceURL + ' is added to preload list!');
+  };
+
+  /**
+   * Start the resource loading.
+   *
+   * @return void
+   */
+  var startPreloadResources = function startPreloadResources() {
+
+    if (states.startedPreload) {
+      log('Preload started');
+      return;
+    }
+    states.startedPreload = true;
+
+    iDBInit();
+    var dbInitTimer = setInterval(function () {
+      if (states.iDBInit) {
+        clearInterval(dbInitTimer);
+        afterInit();
+      }
+    }, 100);
+
+    var storageCallback = function storageCallback(resourceType, uid, resourceData) {
+      if (resourceData != null) {
+        assignToResource(resourceType, uid, resourceData);
+      } else {
+        loadResourceFromXHR(resourceType, uid, preload[resourceType][uid]);
+      }
+    };
+
+    var loadResourceFromXHR = function loadResourceFromXHR(resourceType, uid, resourceUrl) {
+      // Simple DRM 1, CORS policy apply to XHR in the new browsers.
+      var xhRequest = new XMLHttpRequest();
+      xhRequest.open('GET', resourceUrl, true);
+      xhRequest.responseType = 'arraybuffer';
+      xhRequest.onload = function (eventObj) {
+        var rawArrayBuffer = undefined.response;
+        var contentBlob = new Blob([rawArrayBuffer]);
+
+        var useData = contentBlob;
+        if (resourceType == 'audios') {
+          useData = rawArrayBuffer;
+        }
+        storeToIndexedDB(resourceType, uid, useData);
+        assignToResource(resourceType, uid, useData);
+
+        log(resourceUrl + ' loaded!');
+      };
+      xhRequest.onerror = function (eventObj) {
+        var message = resourceUrl + ' error! (Request)';
+        loadErrors++;
+        log(message);
+        if (system.stopOnError) {
+          error(message);
+        }
+      };
+      xhRequest.onprogress = function (eventObj) {
+        if (eventObj.lengthComputable) {
+          // let percentComplete = eventObj.loaded / eventObj.total;
+          // do something with this
+        }
+      };
+
+      // Simple DRM 2, Only allow access with custom header
+      // TODO: Dynamic Header? More Header?
+      xhRequest.setRequestHeader('CADV-ENGINE', '1.0');
+      xhRequest.send();
+    };
+
+    var assignToResource = function assignToResource(resourceType, uid, resourceData) {
+      switch (resourceType) {
+        case 'images':
+          var newImage = new Image();
+          newImage.src = URL.createObjectURL(resourceData);
+          resources.images[uid] = newImage;
+          break;
+        case 'videos':
+          var newVideo = document.createElement('video');
+          newVideo.src = URL.createObjectURL(resourceData);
+          resources.videos[uid] = newVideo;
+          break;
+        case 'audios':
+          audio.context.decodeAudioData(resourceData, function (buffer) {
+            resources.audios[uid] = buffer;
+            log(uid + '(' + resourceType + ') decoded!');
+          }, function () {
+            // Error Callback
+            var message = uid + '(' + resourceType + ') error! (Decode)';
+            loadErrors++;
+            log(message);
+            if (system.stopOnError) {
+              error(message);
+            }
+          });
+          break;
+      }
+    };
+
+    var afterInit = function afterInit() {
+      // Init Audio related in Preload
+      if (!initAudio()) {
+        log('Unable to create audio context. Web Audio API might be not available.');
+        log('No audio will be loaded.');
+
+        // Empty Audio list
+        preload.audios = {};
+      }
+
+      for (var i = 0, keys = Object.keys(preload); i < keys.length; i++) {
+        var resourceType = keys[i];
+        if (!$.isEmptyObject(preload[resourceType])) {
+          if (resourceType == 'audios' && !system.useAudio) {
+            log('Skipping audio list. (UseAudio disabled)');
+            continue;
+          }
+          log('Total of preload ' + resourceType + ': ' + Object.keys(preload[resourceType]).length);
+
+          var idKeys = Object.keys(preload[resourceType]);
+          for (var j = 0; j < idKeys.length; j++) {
+            // Load Resource
+            // Attempt to retrieve from Storage, load from XHR when empty
+            var resourceID = idKeys[j];
+            getFromIndexedDB(resourceType, resourceID, storageCallback);
+          }
+        } else {
+          log('Preload list of ' + resourceType + ' is empty!');
+        }
+      }
+    };
+  };
+
+  ////////////////////
+  // Custom variables
+  ////////////////////
+  // Custom variables that user can add them and manipulate them.
+  var customVars = new Object();
+
+  var getCustomVariable = function getCustomVariable(keyName) {
+    if (customVars[keyName] === undefined) {
+      return null;
+    }
+    return customVars[keyName];
+  };
+
+  var setCustomVariable = function setCustomVariable(keyName, value) {
+    customVars[keyName] = value;
+    return customVars[keyName];
+  };
+
+  ////////////////////
+  // Audio Component
+  ////////////////////
+  // Component that stores audio related settings. (Volume settings, etc)
+  var audio = {
+    'context': null
+  };
+
+  var initAudio = function initAudio() {
+    if (system.useAudio) {
+      if (typeof AudioContext != 'undefined') {
+        // Web Audio API is all unprefixed
+        audio.context = new AudioContext();
+        audio['master'] = audio.context.createGain();
+        audio['master'].gain.value = system.masterVolume;
+        audio['master'].connect(audio.context.destination);
+
+        var audioType = ['bgm', 'sfx', 'voice'];
+        for (var i = 0; i < audioType.length; i++) {
+          var type = audioType[i];
+          audio[type] = audio.context.createGain();
+          audio[type].gain.value = system[type + 'Volume'];
+          audio[type].connect(audio['master']);
+
+          audio[type + 'out'] = audio.context.createBufferSource();
+          audio[type + 'out'].connect(audio[type]);
+        }
+        return true;
+      } else {
+        // FORCE to switch back
+        system.useAudio = false;
+        return false;
+      }
+    }
+  };
+
+  var playAudio = function playAudio(audioType, audioId) {
+    var isLoop = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
+    // BGM is always loop
+    if (audioType == 'bgm') {
+      isLoop = true;
+    }
+
+    if (audioType == 'sfx' && !isLoop) {
+      // Non-loop SFX is plainly disposable
+      var audioOutput = audio.context.createBufferSource();
+      audioOutput.buffer = resources.audios[audioId];
+      audioOutput.connect(audio.sfx);
+      audioOutput.start(0);
+    } else {
+      audio[audioType + 'out'].buffer = resources.audios[audioId];
+      audio[audioType + 'out'].loop = isLoop;
+      audio[audioType + 'out'].start(0);
+    }
+  };
+
+  var playCrossfadeBGM = function playCrossfadeBGM(audioId, crossfadeDuration) {
+    var bgmVolume = audio.context.createGain();
+    bgmVolume.gain.value = 0;
+    bgmVolume.connect(cadv.audio['master']);
+
+    var bgmOutput = audio.context.createBufferSource();
+    bgmOutput.buffer = resources.audios[audioId];
+    bgmOutput.loop = true;
+    bgmOutput.connect(bgmVolume);
+    bgmOutput.start(0);
+
+    log('Crossfade begin!');
+    /* FIXME: Migrate to AnimeJs
+    $.Animation(bgmVolume.gain, {
+      value: system.bgmVolume
+    }, {
+      duration: crossfadeDuration,
+      easing: 'linear'
+    });
+     $.Animation(audio.bgm.gain, {
+      value: 0
+    }, {
+      duration: crossfadeDuration,
+      easing: 'linear'
+    }).done(function() {
+      audio.bgmout.stop();
+      delete audio.bgm, audio.bgmout;
+       audio.bgm = bgmVolume;
+      audio.bgmout = bgmOutput;
+      log('Crossfade complete!');
+    });
+    //*/
+  };
+
+  var stopAudio = function stopAudio(audioType) {
+    audio[audioType + 'out'].stop();
+  };
+
+  ////////////////////
+  // Text Output
+  ////////////////////
+  // HTML5 Canvas do not recognize new lines, therefore using HTML/CSS features to output text.
+  var textOutCSS = {
+    'position': 'absolute',
+    'font-family': 'Meiryo UI, Hiragino Maru Gothic ProN',
+    'font-size': '16px',
+    'line-height': '16px',
+    'left': '16px',
+    'top': '16px',
+    'color': '#FFFAFA',
+    'overflow': 'visible',
+    'cursor': 'default'
+  };
+
+  var choiceBoxCSS = {
+    'width': '240px',
+    'height': '48px',
+    'color': '#111111',
+    'text-align': 'center',
+    'line-height': '48px',
+    'border': 'solid 1px #999999',
+    'border-radius': '4px',
+    'margin': '12px 0 12px',
+    'cursor': 'default',
+    'opacity': '0'
+  };
+
+  var choiceBoxHoverCSS = {
+    'font-size': '1.125em',
+    'color': '#666666',
+    'border': 'solid 1px #7777FF',
+    'opacity': '0.9'
+  };
+
+  /**
+   * Set CSS Value of specified component.
+   *
+   * @param string componentName | The component you wish to alter it's CSS (textOut, choiceBox, choiceBoxHover)
+   * @param string propertyName | The CSS Property name you wish to edit / add
+   * @param string propertyValue | The CSS Value you wish to apply (Use undefined, null, or blank string to remove)
+   * @return object | All CSS values for the specified component
+   */
+  var setCSSValue = function setCSSValue(componentName, propertyName, propertyValue) {
+    if (componentName != 'textOut' && componentName != 'choiceBox' && componentName != 'choiceBoxHover') {
+      log('Invalid componentName!');
+      return null;
+    }
+
+    if (propertyValue == undefined || propertyValue == null || propertyValue == '') {
+      eval('delete ' + componentName + "CSS['" + propertyName + "'];");
+    } else {
+      eval(componentName + "CSS['" + propertyName + "'] = '" + propertyValue + "';");
+    }
+
+    // TODO: Avoid using eval. // window[componentName], this[componentName]
+    // return this[componentName + 'CSS'];
+    return eval(componentName + 'CSS');
+  };
+
+  ////////////////////
+  // Core (Draw)
+  ////////////////////
+  // Draw the canvas, and outputs it to the browser.
+  var canvas = void 0,
+      canvasContext = void 0;
+  var oldObjects = {
+    'backgrounds': {},
+    'characters': {},
+    'messagewindow': {}
+  };
+  var detailObjects = {
+    'backgrounds': {},
+    'characters': {},
+    'messagewindow': {}
+  };
+
+  var performScaling = function performScaling() {
+    system.screenScale = window.innerWidth / system.width;
+    if (system.height * system.screenScale > window.innerHeight) {
+      system.screenScale = window.innerHeight / system.height;
+    }
+
+    // No scale below 0.5 (50%)
+    if (system.screenScale < 0.5) {
+      system.screenScale = 0.5;
+    }
+
+    // Adjust canvas height to adapt changes
+    if (system.screenScale > 1.0) {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    } else {
+      canvas.width = system.width;
+      canvas.height = system.height;
+    }
+  };
+
+  var stopScaling = function stopScaling() {
+    system.autoScale = false;
+    system.screenScale = 1.0;
+    canvas.width = system.width;
+    canvas.height = system.height;
+  };
+
+  var createImage = function createImage(imageType, uid, imageID, extraParams) {
+    var newImage = resources.images[imageID];
+    var newCanvas = document.createElement('canvas');
+    var detailObject = {
+      'id': uid, // Unique ID
+      'canvasObject': newCanvas, // Canvas Object Holder
+      'imageObject': newImage, // Image Object Holder
+      'type': imageType, //
+      'percentX': '0',
+      'percentY': '0',
+      'x': '0',
+      'y': '0',
+      'iWidth': newImage.width,
+      'iHeight': newImage.height,
+      'hFlip': '1', // Horizontal Flip
+      'vFlip': '1', // Vertical Flip
+      'opac': '1', // Opacity
+      'originX': '50%', // Transform Origin X
+      'originY': '50%', // Transform Origin Y
+      'stretch': false, // Enable stretch (Mainly used in BG)
+      'stretchScale': '1', // Stretched Scale
+      'imageScale': '1', // Image Scale
+      'rotate': '0', // Rotation (Degree, 0 - 360)
+      'xSlice': '1',
+      'ySlice': '1',
+      'xCount': '0',
+      'yCount': '0'
+      // Default Offset?
+    };
+
+    // Overwrites Parameter above if extra parameters were provided
+    if (extraParams != undefined) {
+      for (var i = 0, keys = Object.keys(extraParams); i < keys.length; i++) {
+        var key = keys[i];
+        if (detailObject[key] != undefined) {
+          detailObject[key] = extraParams[key];
+        }
+      }
+    }
+
+    if (extraParams != undefined && extraParams.parentId != undefined && extraParams.childType != undefined) {
+      if (detailObjects[imageType][extraParams.parentId] == undefined) {
+        throw new Error('No such parent!');
+      }
+      if (detailObjects[imageType][extraParams.parentId][extraParams.childType] == undefined) {
+        detailObjects[imageType][extraParams.parentId][extraParams.childType] = {};
+      }
+      detailObjects[imageType][extraParams.parentId][extraParams.childType] = detailObject;
+    } else {
+      detailObjects[imageType][uid] = detailObject;
+    }
+
+    return uid;
+  };
+
+  var drawDetail = function drawDetail(detailObject, parentObject) {
+    if (oldObjects[detailObject.type][detailObject.id] == undefined) {
+      oldObjects[detailObject.type][detailObject.id] = $.extend({}, detailObject);
+    }
+
+    detailObject.canvasObject.width = canvas.width;detailObject.canvasObject.height = canvas.height;
+    if (parentObject !== undefined) {
+      detailObject.canvasObject.width = system.width;
+      detailObject.canvasObject.height = system.height;
+      // Need calculate both to acquire enough canvas size
+    }
+    var ncContext = detailObject.canvasObject.getContext('2d');
+
+    var scale = canvas.width / detailObject.imageObject.width;
+    detailObject.stretchScale = scale;
+    scale *= detailObject.imageScale;
+
+    if (detailObject.stretch) {
+      detailObject.iWidth = detailObject.imageObject.width * detailObject.imageScale;
+      detailObject.iHeight = detailObject.imageObject.height * detailObject.imageScale;
+      ncContext.scale(scale * parseInt(detailObject.hFlip), scale * parseInt(detailObject.vFlip));
+    } else {
+      if (parentObject !== undefined) {
+        ncContext.scale(detailObject.hFlip * detailObject.imageScale, detailObject.vFlip * detailObject.imageScale);
+      } else {
+        // ncContext.scale(detailObject.hFlip * detailObject.imageScale * cadv.system.screenscale, detailObject.vFlip * detailObject.imageScale * cadv.system.screenscale);
+        ncContext.scale(detailObject.hFlip * detailObject.imageScale, detailObject.vFlip * detailObject.imageScale);
+      }
+    }
+
+    var useOriginX = detailObject.originX,
+        useOriginY = detailObject.originY;
+    if (useOriginX.indexOf('%') != 0) {
+      useOriginX = detailObject.imageObject.width * (parseInt(useOriginX) / 100);
+    }
+    if (useOriginY.indexOf('%') != 0) {
+      useOriginY = detailObject.imageObject.height * (parseInt(useOriginY) / 100);
+    }
+
+    ncContext.translate(useOriginX, useOriginY);
+    if (parseInt(detailObject.rotate) != 0) {
+      ncContext.rotate(detailObject.rotate * (Math.PI / 180));
+    }
+    ncContext.translate(-useOriginX, -useOriginY);
+
+    ncContext.globalAlpha = detailObject.opac;
+
+    var useX = detailObject.x;
+    var useY = detailObject.y;
+    var prevXPercent = oldObjects[detailObject.type][detailObject.id]['percentX'];
+    var prevYPercent = oldObjects[detailObject.type][detailObject.id]['percentY'];
+    if (detailObject.percentX != prevXPercent) {
+      useX = (detailObject.iWidth - detailObject.imageObject.width) / detailObject.imageScale * (parseInt(detailObject.percentX) / 100) * -1; // This Works
+      // useX = ((this.iWidth - canvas.width) / this.iScale) * (parseInt(this.percentX) / 100) * -1;
+      if (!isFinite(useX)) {
+        useX = '0';
+      }
+      detailObject.x = useX;
+    } else {
+      // Renew percent X
+      detailObject.percentX = detailObject.x / ((detailObject.iWidth - detailObject.imageObject.width) / detailObject.imageScale) * -100;
+      if (!isFinite(detailObject.percentX)) {
+        detailObject.percentX = '0';
+      }
+    }
+
+    // TODO: Logic for Percent Y differs from Percent X, needs more testing
+    if (detailObject.percentY != prevYPercent) {
+      var useScale = detailObject.imageScale;
+      if (detailObject.stretch) {
+        useScale = detailObject.stretchScale * detailObject.imageScale;
+      }
+      // useY = ((this.iHeight - image.height) / this.iScale) * (parseInt(this.percentY) / 100) * -1; // Not Working
+      useY = (detailObject.imageObject.height - canvas.height / useScale) * (parseInt(detailObject.percentY) / 100) * -1; // It works!
+      if (!isFinite(useY)) {
+        useY = '0';
+      }
+      detailObject.y = useY;
+    } else {
+      // Renew percent Y
+      detailObject.percentY = detailObject.y / ((detailObject.iHeight - detailObject.imageObject.height) / detailObject.imageObject.iScale) * -100;
+      if (!isFinite(detailObject.percentY)) {
+        detailObject.percentY = '0';
+      }
+    }
+    // log(useY);
+
+    if (detailObject.xSlice == '1' && detailObject.ySlice == '1') {
+      // ncContext.drawImage(detailObject.imageObject, useX, useY, detailObject.imageObject.width * cadv.system.screenscale, detailObject.imageObject.height * cadv.system.screenscale);
+      // ncContext.drawImage(detailObject.imageObject, 0, 0, detailObject.imageObject.width, detailObject.imageObject.height, useX, useY, detailObject.imageObject.width * cadv.system.screenscale, detailObject.imageObject.height * cadv.system.screenscale);
+      ncContext.drawImage(detailObject.imageObject, 0, 0, detailObject.imageObject.width, detailObject.imageObject.height, useX, useY, detailObject.imageObject.width, detailObject.imageObject.height);
+    } else {
+      var xSize = detailObject.imageObject.width / detailObject.xSlice;
+      var ySize = detailObject.imageObject.height / detailObject.ySlice;
+      var xOffset = xSize * parseInt(detailObject.xCount);
+      var yOffset = ySize * parseInt(detailObject.yCount);
+      ncContext.drawImage(detailObject.imageObject, xOffset, yOffset, xSize, ySize, parseFloat(useX) + parseFloat(parentObject.x), parseFloat(useY) + parseFloat(parentObject.y), xSize, ySize);
+
+      // log(ySize);
+
+      // delete xSize, ySize, xOffset, yOffset;
+    }
+
+    oldObjects[detailObject.type][detailObject.id] = $.extend({}, detailObject);
+
+    if (detailObject.type == 'characters' && detailObject.face != undefined) {
+      ncContext.drawImage(undefined.drawDetail(detailObject.face, detailObject), 0, 0);
+    }
+
+    // delete ncContext, useX, useY;
+    return detailObject.canvasObject;
+  };
+
+  // TODO: Modify for other uses (Shooter, RPG, etc...)?
+  var drawCanvas = function drawCanvas() {
+
+    var widthOffset = 0;
+    var heightOffset = 0;
+
+    if (system.screenscale != '1.0') {
+      widthOffset = Math.round(window.innerWidth - system.width * system.screenScale);
+      heightOffset = Math.round(window.innerHeight - system.height * system.screenScale);
+      // log($(window).height());
+    }
+    //*/
+
+    // DEV NOTES:
+    // http://stackoverflow.com/questions/18565395/why-does-canvas-context-drawimage-fail-on-iphone
+    // Explains canvasContext.drawImage (with 9 params) not working on iPhone but the one with 5 params does.
+
+    // Background Layer
+    for (var i = 0, keys = Object.keys(detailObjects.backgrounds); i < keys.length; i++) {
+      var uid = keys[i];
+      if (isMobile()) {
+        // canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
+        canvasContext.drawImage(undefined.drawDetail(detailObjects.backgrounds[uid]), 0, 0, canvas.width, canvas.height);
+      } else {
+        // canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
+        // canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
+        canvasContext.drawImage(undefined.drawDetail(detailObjects.backgrounds[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
+      }
+    }
+
+    for (var _i = 0, _keys = Object.keys(detailObjects.characters); _i < _keys.length; _i++) {
+      var _uid = _keys[_i];
+      if (isMobile()) {
+        // canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
+        canvasContext.drawImage(undefined.drawDetail(detailObjects.characters[_uid]), 0, 0, canvas.width, canvas.height);
+      } else {
+        // canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
+        // canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
+        canvasContext.drawImage(undefined.drawDetail(detailObjects.characters[_uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
+      }
+    }
+
+    for (var _i2 = 0, _keys2 = Object.keys(detailObjects.messagewindow); _i2 < _keys2.length; _i2++) {
+      var _uid2 = _keys2[_i2];
+      if (isMobile()) {
+        // canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
+        canvasContext.drawImage(undefined.drawDetail(detailObjects.messagewindow[_uid2]), 0, 0, canvas.width, canvas.height);
+      } else {
+        // canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
+        // canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
+        canvasContext.drawImage(undefined.drawDetail(detailObjects.messagewindow[_uid2]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
+      }
+    }
+  };
+
+  var resetCanvas = function resetCanvas() {
+    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
+    canvasContext.fillStyle = system.defaultBgColor;
+    canvasContext.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Reset fillStyle
+    canvasContext.fillStyle = '';
+
+    // Save state
+    canvasContext.save();
+
+    // Apply Screen Scaling
+    canvasContext.scale(system.screenScale, system.screenScale);
+
+    // Redraw everything & restore state
+    cadv.drawCanvas();
+    canvasContext.restore();
+
+    return states.canvasRefresh; // For jQuery.fx.timer
+  };
+
+  var setPosition = function setPosition() {
+    if (!states.canvasRefresh) {
+      log('Not running yet. Do nothing.');
+      return;
+    }
+
+    if (detailObjects.messagewindow.base == undefined) {
+      log('Message Window not ready!');
+      setTimeout(setPosition, 1000);
+      return;
+    }
+
+    // TODO: Center canvas content if browser width is larger than canvas contents, even if scale not applied?
+
+    if (system.screenScale != 1.0) {
+      var widthOffset = Math.round(window.innerWidth - system.width * system.screenScale) / 2;
+      var heightOffset = Math.round(window.innerHeight - system.height * system.screenScale) / 2;
+
+      if (system.screenScale <= 0.5) {
+        heightOffset = 0;
+        // $('body').css('height', (cadv.system.height / 2) + 'px');
+      }
+
+      /* FIXME: Use Vanilla JS
+      $('canvas#cadv').css({
+        'position' : 'fixed', // absolute?
+        'left' : widthOffset + 'px',
+        'top' : heightOffset + 'px'
+      });
+       system.textSelector.css({
+        'left' : ((parseInt(textOutCSS.left) + (detailObjects.messagewindow.base.x)) * system.screenScale) + widthOffset + 'px',
+        'top' : ((parseInt(textOutCSS.top) + (detailObjects.messagewindow.base.y)) * system.screenScale) + heightOffset + 'px',
+        'transform' : 'scale(' + system.screenScale + ')',
+        'transform-origin' : '0% 0%'
+      });
+      //*/
+    } else {
+        /* FIXME: Use Vanilla JS
+        system.textSelector.css({
+          'left' : (parseInt(textOutCSS.left) + (detailObjects.messagewindow.base.x)) + 'px',
+          'top' : (parseInt(textOutCSS.top) + (detailObjects.messagewindow.base.y)) + 'px',
+        });
+        //*/
+      }
+  };
+
+  var start = function start(callback) {
+    states.canvasRefresh = true;
+    // jQuery.fx.timer(resetCanvas);
+
+    if (callback !== undefined && typeof callback == 'function') {
+      callback();
+    }
+
+    // Besure to remember to set MessageBox in callback
+    setPosition();
+  };
+
+  var stop = function stop() {
+    states.canvasRefresh = false;
+  };
+
+  var canvasInit = function canvasInit(callback) {
+    // Initialize Canvas
+    canvas = document.createElement('canvas');
+    canvas.id = 'cadv';
+    canvas.width = system.width;
+    canvas.height = system.height;
+    canvasContext = canvas.getContext('2d');
+
+    // Append Canvas to HTML Document(Body)
+    // $('body').empty().append(canvas).css('background-color', system.defaultBgColor);
+
+    // CSS for textOut
+    var stringTextOutCSS = '';
+    for (var i = 0, keys = Object.keys(textOutCSS); i < keys.length; i++) {
+      var key = keys[i];
+      stringTextOutCSS += key + ':' + textOutCSS[key] + ';';
+    }
+    stringTextOutCSS = 'div#textout{' + stringTextOutCSS + '}';
+
+    // CSS for choiceBox
+    var stringChoiceBoxCSS = '';
+    for (var _i3 = 0, _keys3 = Object.keys(choiceBoxCSS); _i3 < _keys3.length; _i3++) {
+      var _key = _keys3[_i3];
+      stringChoiceBoxCSS += _key + ':' + choiceBoxCSS[_key] + ';';
+    }
+    stringChoiceBoxCSS = 'div.choice{' + stringChoiceBoxCSS + '}';
+
+    // CSS for choiceBoxHover
+    var stringChoiceBoxHoverCSS = '';
+    for (var _i4 = 0, _keys4 = Object.keys(choiceBoxHoverCSS); _i4 < _keys4.length; _i4++) {
+      var _key2 = _keys4[_i4];
+      stringChoiceBoxHoverCSS += _key2 + ':' + choiceBoxHoverCSS[_key2] + ';';
+    }
+    stringChoiceBoxHoverCSS = 'div.choice.hovered{' + stringChoiceBoxHoverCSS + '}';
+
+    // Default CSS settings for all browsers
+    // $('head').prepend('<style>*{padding:0;margin:0;}::-webkit-scrollbar{display: none;}canvas{vertical-align:top;}.pointer{cursor:pointer;}' + stringTextOutCSS + stringChoiceBoxCSS + stringChoiceBoxHoverCSS + '</style>');
+
+    var timer = setInterval(function () {
+      if (Object.keys(preload.images).length + Object.keys(preload.audios).length + Object.keys(preload.videos).length - loadErrors == Object.keys(resources.images).length + Object.keys(resources.audios).length + Object.keys(resources.videos).length) {
+        clearTimeout(timer);
+
+        // Create Text Output
+        var newDiv = document.createElement('div');
+        newDiv.id = 'textout';
+
+        // $('body').append(newDiv);
+        // system.textSelector = $('div#textout');
+
+        // If autoscaling enabled
+        if (system.autoScale) {
+          performScaling();
+        }
+
+        if (callback !== undefined && typeof callback == 'function') {
+          callback();
+        } else {
+          // Ladies and Gentlemen, start your engines!
+          //cadv.start();
+        }
+      }
+    }, 500);
+  };
+
+  var textWriter = function textWriter(inputString) {
+    var inputLength = inputString.length;
+    var textPosition = 0;
+    var writerTimer = null;
+
+    var outputText = function outputText() {
+      // FIXME: Might hang if tag not closed
+      switch (inputLength.charAt(textPosition)) {
+        case '<':
+          // Tag Striper (example: <span>)
+          while (inputLength.charAt(textPosition) != '>') {
+            textPosition++;
+          }
+          break;
+        case '&':
+          // HTML Symbol Skipper (example: &amp;)
+          while (inputLength.charAt(textPosition) != ';') {
+            textPosition++;
+          }
+          break;
+        default:
+          // Add Position Value
+          textPosition++;
+          break;
+      }
+
+      // system.textSelector.html(inputString.substring(0, textPosition));
+
+      // Break Condition
+      if (textPosition == inputLength || !states.outputingText) {
+        // system.textSelector.html(inputString.substring(0, inputLength)); // Complete text
+        textvisual._outputingText = false;
+
+        // Show Button?
+        //showButton();
+
+        // Delete variable to lessen memory consumption
+        // FIXME: (Not helping at all?, Remove?)
+        // delete inputLength;
+        // delete textPosition;
+        // delete writerTimer;
+      } else {
+        // Call again.
+        writerTimer = setTimeout(outputText, Math.floor(1000 / system.textSpeed));
+      }
+    };
+
+    states.outputingText = true;
+    writerTimer = setTimeout(outputText, Math.floor(1000 / system.textSpeed));
+  };
+
+  ////////////////////
+  // Event Listeners
+  ////////////////////
+  //<< WINDOW / DOCUMENT >>//
+  window.onresize = function (eventObj) {
+    eventObj.preventDefault(); // DOM2
+    if (system.autoScale) {
+      performScaling();
+    }
+    setPosition();
+  };
+
+  //<< KEYBOARD >>//
+  window.onkeydown = function (eventObj) {
+    eventObj.preventDefault(); // DOM2
+    var keyLocation = eventObj.location;
+    var whichKey = eventObj.which;
+
+    switch (whichKey) {
+      case 27:
+        // Escape: Main Menu
+        break;
+      case 13:
+        // Enter Key: Next Script, Decide
+        break;
+      case 32:
+        // Space: Show Hide Message & Window
+        break;
+      case 17:
+        if (keyLocation == KeyboardEvent.DOM_KEY_LOCATION_RIGHT) {
+          // Right Control: Skip mode
+        }
+        break;
+      case 38:
+        // Arrows(Up): Choose Selection
+        break;
+      case 40:
+        // Arrows(Down): Choose Selection
+        break;
+
+      // TODO: Log Mode?
+
+      default:
+        break;
+    }
+  };
+
+  window.onkeyup = function (eventObj) {
+    eventObj.preventDefault(); // DOM2
+    var keyLocation = eventObj.location;
+    var whichKey = eventObj.which;
+
+    switch (whichKey) {
+      case 17:
+        if (keyLocation == KeyboardEvent.DOM_KEY_LOCATION_RIGHT) {
+          // Right Control: Disable Skip Mode
+        }
+        break;
+      default:
+        break;
+    }
+  };
+
+  //<< MOUSE >>//
+  window.onmousedown = function (eventObj) {
+    eventObj.preventDefault(); // DOM2
+    var whichKey = eventObj.which;
+
+    switch (whichKey) {
+      case 1:
+        // Left Click: Next Script, Decide
+        break;
+      default:
+        break;
+    }
+  };
+
+  document.onselectstart = function () {
+    // Disable Text Highlight
+    return false;
+  };
+
+  //<< GAMEPAD API? >>//
+  // Work In Progress
+  var cadvGamepad = null;
+  var gpLoopTimer = void 0;
+  window.addEventListener('gamepadconnected', function (eventObj) {
+    cadvGamepad = eventObj.gamepad;
+    gpLoopTimer = setInterval(function () {
+
+      for (var i = 0, max = cadvGamepad.buttons.length; i < max; i++) {
+        console.log('Key ' + i + ' state: ' + cadvGamepad.buttons[i].pressed);
+      }
+    }, 1000);
+  });
+
+  window.addEventListener('gamepaddisconnected', function (eventObj) {
+    clearInterval(gpLoopTimer);
+    cadvGamepad = null;
+  });
+
+  // -- // End Of CADV Functional Stuffs // -- //
+
+  // Only expose letiables and functions that are needed(public).
+  return {
+    // System & Utils
+    getSystemSetting: getSystemSetting,
+    setSystemSetting: setSystemSetting,
+    isMobile: isMobile,
+
+    // Custom variables
+    getCustomVariable: getCustomVariable,
+    setCustomVariable: setCustomVariable,
+
+    setCSSValue: setCSSValue
+  };
+}();
 
 /***/ }),
 /* 1 */
@@ -177,29 +1397,176 @@ module.exports = g;
 /* 3 */
 /***/ (function(module, exports) {
 
-module.exports = function(module) {
-	if(!module.webpackPolyfill) {
-		module.deprecate = function() {};
-		module.paths = [];
-		// module.parent = undefined by default
-		if(!module.children) module.children = [];
-		Object.defineProperty(module, "loaded", {
-			enumerable: true,
-			get: function() {
-				return module.l;
+/*!
+* screenfull
+* v3.3.2 - 2017-10-27
+* (c) Sindre Sorhus; MIT License
+*/
+(function () {
+	'use strict';
+
+	var document = typeof window !== 'undefined' && typeof window.document !== 'undefined' ? window.document : {};
+	var isCommonjs = typeof module !== 'undefined' && module.exports;
+	var keyboardAllowed = typeof Element !== 'undefined' && 'ALLOW_KEYBOARD_INPUT' in Element;
+
+	var fn = (function () {
+		var val;
+
+		var fnMap = [
+			[
+				'requestFullscreen',
+				'exitFullscreen',
+				'fullscreenElement',
+				'fullscreenEnabled',
+				'fullscreenchange',
+				'fullscreenerror'
+			],
+			// New WebKit
+			[
+				'webkitRequestFullscreen',
+				'webkitExitFullscreen',
+				'webkitFullscreenElement',
+				'webkitFullscreenEnabled',
+				'webkitfullscreenchange',
+				'webkitfullscreenerror'
+
+			],
+			// Old WebKit (Safari 5.1)
+			[
+				'webkitRequestFullScreen',
+				'webkitCancelFullScreen',
+				'webkitCurrentFullScreenElement',
+				'webkitCancelFullScreen',
+				'webkitfullscreenchange',
+				'webkitfullscreenerror'
+
+			],
+			[
+				'mozRequestFullScreen',
+				'mozCancelFullScreen',
+				'mozFullScreenElement',
+				'mozFullScreenEnabled',
+				'mozfullscreenchange',
+				'mozfullscreenerror'
+			],
+			[
+				'msRequestFullscreen',
+				'msExitFullscreen',
+				'msFullscreenElement',
+				'msFullscreenEnabled',
+				'MSFullscreenChange',
+				'MSFullscreenError'
+			]
+		];
+
+		var i = 0;
+		var l = fnMap.length;
+		var ret = {};
+
+		for (; i < l; i++) {
+			val = fnMap[i];
+			if (val && val[1] in document) {
+				for (i = 0; i < val.length; i++) {
+					ret[fnMap[0][i]] = val[i];
+				}
+				return ret;
 			}
-		});
-		Object.defineProperty(module, "id", {
-			enumerable: true,
-			get: function() {
-				return module.i;
+		}
+
+		return false;
+	})();
+
+	var eventNameMap = {
+		change: fn.fullscreenchange,
+		error: fn.fullscreenerror
+	};
+
+	var screenfull = {
+		request: function (elem) {
+			var request = fn.requestFullscreen;
+
+			elem = elem || document.documentElement;
+
+			// Work around Safari 5.1 bug: reports support for
+			// keyboard in fullscreen even though it doesn't.
+			// Browser sniffing, since the alternative with
+			// setTimeout is even worse.
+			if (/ Version\/5\.1(?:\.\d+)? Safari\//.test(navigator.userAgent)) {
+				elem[request]();
+			} else {
+				elem[request](keyboardAllowed && Element.ALLOW_KEYBOARD_INPUT);
 			}
-		});
-		module.webpackPolyfill = 1;
+		},
+		exit: function () {
+			document[fn.exitFullscreen]();
+		},
+		toggle: function (elem) {
+			if (this.isFullscreen) {
+				this.exit();
+			} else {
+				this.request(elem);
+			}
+		},
+		onchange: function (callback) {
+			this.on('change', callback);
+		},
+		onerror: function (callback) {
+			this.on('error', callback);
+		},
+		on: function (event, callback) {
+			var eventName = eventNameMap[event];
+			if (eventName) {
+				document.addEventListener(eventName, callback, false);
+			}
+		},
+		off: function (event, callback) {
+			var eventName = eventNameMap[event];
+			if (eventName) {
+				document.removeEventListener(eventName, callback, false);
+			}
+		},
+		raw: fn
+	};
+
+	if (!fn) {
+		if (isCommonjs) {
+			module.exports = false;
+		} else {
+			window.screenfull = false;
+		}
+
+		return;
 	}
-	return module;
-};
+
+	Object.defineProperties(screenfull, {
+		isFullscreen: {
+			get: function () {
+				return Boolean(document[fn.fullscreenElement]);
+			}
+		},
+		element: {
+			enumerable: true,
+			get: function () {
+				return document[fn.fullscreenElement];
+			}
+		},
+		enabled: {
+			enumerable: true,
+			get: function () {
+				// Coerce to boolean in case of old WebKit
+				return Boolean(document[fn.fullscreenEnabled]);
+			}
+		}
+	});
+
+	if (isCommonjs) {
+		module.exports = screenfull;
+	} else {
+		window.screenfull = screenfull;
+	}
+})();
 
 
 /***/ })
 /******/ ]);
+});

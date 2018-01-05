@@ -1,10 +1,6 @@
 'use strict';
 
 const env = process.env.NODE_ENV;
-const compressOpt = {
-  drop_console: true,
-  warnings: false
-};
 const webpack = require('webpack');
 module.exports = {
 
@@ -14,7 +10,9 @@ module.exports = {
   },
   output: {
     path: __dirname,
-    filename: '[name].js'
+    filename: '[name].js',
+    libraryTarget: 'umd',
+    library: 'cadv'
   },
   module: {
     rules: [
@@ -26,11 +24,17 @@ module.exports = {
     ]
   },
   plugins: [
+    new webpack.BannerPlugin({
+      banner: new Date().toString()
+    }),
     new webpack.optimize.UglifyJsPlugin({
       include: /\.min\.js$/,
       minimize: true,
       sourceMap: true,
-      compress: env === 'production' ? compressOpt : {}
+      compress: {
+        drop_console: true,
+        warnings: false
+      }
     })
   ]
 };
