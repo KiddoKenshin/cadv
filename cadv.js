@@ -1,4 +1,4 @@
-/*! Fri Jan 05 2018 17:38:04 GMT+0900 (JST) */
+/*! Fri Jan 05 2018 17:48:23 GMT+0900 (JST) */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -410,194 +410,6 @@ module.exports = function () {
     videos: {} // Video (From Blob)
   };
 
-  /**
-   * Add resource to preload list
-   *
-   * @param string resourceType | image, audio, video
-   * @param string resourceID | ID to be use later on manipulating them (Strict no multibyte string)
-   * @param string resourceURL | Source of Resource
-   * @return void
-   */
-  var addPreloadResource = function addPreloadResource(resourceType, resourceID, resourceURL) {
-    switch (resourceType) {
-      case 'image':
-        preload.images[resourceID] = resourceURL;
-        break;
-      case 'audio':
-        preload.audios[resourceID] = resourceURL;
-        break;
-      case 'video':
-        preload.videos[resourceID] = resourceURL;
-        break;
-      default:
-        {
-          var message = resourceType + ' is not a valid resource type!';
-          log(message);
-          if (system.stopOnError) {
-            error(message);
-          }
-          break;
-        }
-    }
-    log(resourceURL + ' is added to preload list!');
-  };
-
-  /**
-   * Start the resource loading.
-   *
-   * @return void
-   */
-  var startPreloadResources = function startPreloadResources() {
-
-    if (states.startedPreload) {
-      log('Preload started');
-      return;
-    }
-    states.startedPreload = true;
-
-    iDBInit();
-    var dbInitTimer = setInterval(function () {
-      if (states.iDBInit) {
-        clearInterval(dbInitTimer);
-        afterInit();
-      }
-    }, 100);
-
-    var storageCallback = function storageCallback(resourceType, uid, resourceData) {
-      if (resourceData != null) {
-        assignToResource(resourceType, uid, resourceData);
-      } else {
-        loadResourceFromXHR(resourceType, uid, preload[resourceType][uid]);
-      }
-    };
-
-    var loadResourceFromXHR = function loadResourceFromXHR(resourceType, uid, resourceUrl) {
-      // Simple DRM 1, CORS policy apply to XHR in the new browsers.
-      var xhRequest = new XMLHttpRequest();
-      xhRequest.open('GET', resourceUrl, true);
-      xhRequest.responseType = 'arraybuffer';
-      xhRequest.onload = function (eventObj) {
-        var rawArrayBuffer = undefined.response;
-        var contentBlob = new Blob([rawArrayBuffer]);
-
-        var useData = contentBlob;
-        if (resourceType === 'audios') {
-          useData = rawArrayBuffer;
-        }
-        storeToIndexedDB(resourceType, uid, useData);
-        assignToResource(resourceType, uid, useData);
-
-        log(resourceUrl + ' loaded!');
-      };
-      xhRequest.onerror = function (eventObj) {
-        var message = resourceUrl + ' error! (Request)';
-        loadErrors += 1;
-        log(message);
-        if (system.stopOnError) {
-          error(message);
-        }
-      };
-      xhRequest.onprogress = function (eventObj) {
-        if (eventObj.lengthComputable) {
-          // let percentComplete = eventObj.loaded / eventObj.total;
-          // do something with this
-        }
-      };
-
-      // Simple DRM 2, Only allow access with custom header
-      // TODO: Dynamic Header? More Header?
-      xhRequest.setRequestHeader('CADV-ENGINE', '1.0');
-      xhRequest.send();
-    };
-
-    var assignToResource = function assignToResource(resourceType, uid, resourceData) {
-      switch (resourceType) {
-        case 'images':
-          {
-            var newImage = new Image();
-            newImage.src = URL.createObjectURL(resourceData);
-            resources.images[uid] = newImage;
-            break;
-          }
-        case 'videos':
-          {
-            var newVideo = document.createElement('video');
-            newVideo.src = URL.createObjectURL(resourceData);
-            resources.videos[uid] = newVideo;
-            break;
-          }
-        case 'audios':
-          {
-            audio.context.decodeAudioData(resourceData, function (buffer) {
-              resources.audios[uid] = buffer;
-              log(uid + '(' + resourceType + ') decoded!');
-            }, function () {
-              // Error Callback
-              var message = uid + '(' + resourceType + ') error! (Decode)';
-              loadErrors += 1;
-              log(message);
-              if (system.stopOnError) {
-                error(message);
-              }
-            });
-            break;
-          }
-        default:
-          break;
-      }
-    };
-
-    var afterInit = function afterInit() {
-      // Init Audio related in Preload
-      if (!initAudio()) {
-        log('Unable to create audio context. Web Audio API might be not available.');
-        log('No audio will be loaded.');
-
-        // Empty Audio list
-        preload.audios = {};
-      }
-
-      for (var i = 0, keys = Object.keys(preload); i < keys.length; i++) {
-        var resourceType = keys[i];
-        if (!$.isEmptyObject(preload[resourceType])) {
-          if (resourceType === 'audios' && !system.useAudio) {
-            log('Skipping audio list. (UseAudio disabled)');
-            continue;
-          }
-          log('Total of preload ' + resourceType + ': ' + Object.keys(preload[resourceType]).length);
-
-          var idKeys = Object.keys(preload[resourceType]);
-          for (var j = 0; j < idKeys.length; j++) {
-            // Load Resource
-            // Attempt to retrieve from Storage, load from XHR when empty
-            var resourceID = idKeys[j];
-            getFromIndexedDB(resourceType, resourceID, storageCallback);
-          }
-        } else {
-          log('Preload list of ' + resourceType + ' is empty!');
-        }
-      }
-    };
-  };
-
-  ////////////////////
-  // Custom variables
-  ////////////////////
-  // Custom variables that user can add them and manipulate them.
-  var customVars = {};
-
-  var getCustomVariable = function getCustomVariable(keyName) {
-    if (customVars[keyName] === undefined) {
-      return null;
-    }
-    return customVars[keyName];
-  };
-
-  var setCustomVariable = function setCustomVariable(keyName, value) {
-    customVars[keyName] = value;
-    return customVars[keyName];
-  };
-
   ////////////////////
   // Audio Component
   ////////////////////
@@ -691,6 +503,197 @@ module.exports = function () {
 
   var stopAudio = function stopAudio(audioType) {
     audio[audioType + 'out'].stop();
+  };
+  ////////////////////
+  // (END) Audio Comp.
+  ////////////////////
+
+  /**
+   * Add resource to preload list
+   *
+   * @param string resourceType | image, audio, video
+   * @param string resourceID | ID to be use later on manipulating them (Strict no multibyte string)
+   * @param string resourceURL | Source of Resource
+   * @return void
+   */
+  var addPreloadResource = function addPreloadResource(resourceType, resourceID, resourceURL) {
+    switch (resourceType) {
+      case 'image':
+        preload.images[resourceID] = resourceURL;
+        break;
+      case 'audio':
+        preload.audios[resourceID] = resourceURL;
+        break;
+      case 'video':
+        preload.videos[resourceID] = resourceURL;
+        break;
+      default:
+        {
+          var message = resourceType + ' is not a valid resource type!';
+          log(message);
+          if (system.stopOnError) {
+            error(message);
+          }
+          break;
+        }
+    }
+    log(resourceURL + ' is added to preload list!');
+  };
+
+  /**
+   * Start the resource loading.
+   *
+   * @return void
+   */
+  var startPreloadResources = function startPreloadResources() {
+
+    if (states.startedPreload) {
+      log('Preload started');
+      return;
+    }
+    states.startedPreload = true;
+
+    var assignToResource = function assignToResource(resourceType, uid, resourceData) {
+      switch (resourceType) {
+        case 'images':
+          {
+            var newImage = new Image();
+            newImage.src = URL.createObjectURL(resourceData);
+            resources.images[uid] = newImage;
+            break;
+          }
+        case 'videos':
+          {
+            var newVideo = document.createElement('video');
+            newVideo.src = URL.createObjectURL(resourceData);
+            resources.videos[uid] = newVideo;
+            break;
+          }
+        case 'audios':
+          {
+            audio.context.decodeAudioData(resourceData, function (buffer) {
+              resources.audios[uid] = buffer;
+              log(uid + '(' + resourceType + ') decoded!');
+            }, function () {
+              // Error Callback
+              var message = uid + '(' + resourceType + ') error! (Decode)';
+              loadErrors += 1;
+              log(message);
+              if (system.stopOnError) {
+                error(message);
+              }
+            });
+            break;
+          }
+        default:
+          break;
+      }
+    };
+
+    var loadResourceFromXHR = function loadResourceFromXHR(resourceType, uid, resourceUrl) {
+      // Simple DRM 1, CORS policy apply to XHR in the new browsers.
+      var xhRequest = new XMLHttpRequest();
+      xhRequest.open('GET', resourceUrl, true);
+      xhRequest.responseType = 'arraybuffer';
+      xhRequest.onload = function (eventObj) {
+        var rawArrayBuffer = undefined.response;
+        var contentBlob = new Blob([rawArrayBuffer]);
+
+        var useData = contentBlob;
+        if (resourceType === 'audios') {
+          useData = rawArrayBuffer;
+        }
+        storeToIndexedDB(resourceType, uid, useData);
+        assignToResource(resourceType, uid, useData);
+
+        log(resourceUrl + ' loaded!');
+      };
+      xhRequest.onerror = function (eventObj) {
+        var message = resourceUrl + ' error! (Request)';
+        loadErrors += 1;
+        log(message);
+        if (system.stopOnError) {
+          error(message);
+        }
+      };
+      xhRequest.onprogress = function (eventObj) {
+        if (eventObj.lengthComputable) {
+          // let percentComplete = eventObj.loaded / eventObj.total;
+          // do something with this
+        }
+      };
+
+      // Simple DRM 2, Only allow access with custom header
+      // TODO: Dynamic Header? More Header?
+      xhRequest.setRequestHeader('CADV-ENGINE', '1.0');
+      xhRequest.send();
+    };
+
+    var storageCallback = function storageCallback(resourceType, uid, resourceData) {
+      if (resourceData != null) {
+        assignToResource(resourceType, uid, resourceData);
+      } else {
+        loadResourceFromXHR(resourceType, uid, preload[resourceType][uid]);
+      }
+    };
+
+    var afterInit = function afterInit() {
+      // Init Audio related in Preload
+      if (!initAudio()) {
+        log('Unable to create audio context. Web Audio API might be not available.');
+        log('No audio will be loaded.');
+
+        // Empty Audio list
+        preload.audios = {};
+      }
+
+      for (var i = 0, keys = Object.keys(preload); i < keys.length; i++) {
+        var resourceType = keys[i];
+        if (!$.isEmptyObject(preload[resourceType])) {
+          if (resourceType === 'audios' && !system.useAudio) {
+            log('Skipping audio list. (UseAudio disabled)');
+            continue;
+          }
+          log('Total of preload ' + resourceType + ': ' + Object.keys(preload[resourceType]).length);
+
+          var idKeys = Object.keys(preload[resourceType]);
+          for (var j = 0; j < idKeys.length; j++) {
+            // Load Resource
+            // Attempt to retrieve from Storage, load from XHR when empty
+            var resourceID = idKeys[j];
+            getFromIndexedDB(resourceType, resourceID, storageCallback);
+          }
+        } else {
+          log('Preload list of ' + resourceType + ' is empty!');
+        }
+      }
+    };
+
+    iDBInit();
+    var dbInitTimer = setInterval(function () {
+      if (states.iDBInit) {
+        clearInterval(dbInitTimer);
+        afterInit();
+      }
+    }, 100);
+  };
+
+  ////////////////////
+  // Custom variables
+  ////////////////////
+  // Custom variables that user can add them and manipulate them.
+  var customVars = {};
+
+  var getCustomVariable = function getCustomVariable(keyName) {
+    if (customVars[keyName] === undefined) {
+      return null;
+    }
+    return customVars[keyName];
+  };
+
+  var setCustomVariable = function setCustomVariable(keyName, value) {
+    customVars[keyName] = value;
+    return customVars[keyName];
   };
 
   ////////////////////

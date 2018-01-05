@@ -327,191 +327,6 @@ module.exports = (() => {
     videos: {}  // Video (From Blob)
   };
 
-  /**
-   * Add resource to preload list
-   *
-   * @param string resourceType | image, audio, video
-   * @param string resourceID | ID to be use later on manipulating them (Strict no multibyte string)
-   * @param string resourceURL | Source of Resource
-   * @return void
-   */
-  const addPreloadResource = (resourceType, resourceID, resourceURL) => {
-    switch (resourceType) {
-      case 'image':
-        preload.images[resourceID] = resourceURL;
-        break;
-      case 'audio':
-        preload.audios[resourceID] = resourceURL;
-        break;
-      case 'video':
-        preload.videos[resourceID] = resourceURL;
-        break;
-      default: {
-        const message = resourceType + ' is not a valid resource type!';
-        log(message);
-        if (system.stopOnError) {
-          error(message);
-        }
-        break;
-      }
-    }
-    log(resourceURL + ' is added to preload list!');
-  };
-
-  /**
-   * Start the resource loading.
-   *
-   * @return void
-   */
-  const startPreloadResources = () => {
-
-    if (states.startedPreload) {
-      log('Preload started');
-      return;
-    }
-    states.startedPreload = true;
-
-    iDBInit();
-    let dbInitTimer = setInterval(() => {
-      if (states.iDBInit) {
-        clearInterval(dbInitTimer);
-        afterInit();
-      }
-    }, 100);
-
-    const storageCallback = (resourceType, uid, resourceData) => {
-      if (resourceData != null) {
-        assignToResource(resourceType, uid, resourceData);
-      } else {
-        loadResourceFromXHR(resourceType, uid, preload[resourceType][uid]);
-      }
-    };
-
-    const loadResourceFromXHR = (resourceType, uid, resourceUrl) => {
-      // Simple DRM 1, CORS policy apply to XHR in the new browsers.
-      const xhRequest = new XMLHttpRequest();
-      xhRequest.open('GET', resourceUrl, true);
-      xhRequest.responseType = 'arraybuffer';
-      xhRequest.onload = (eventObj) => {
-        const rawArrayBuffer = this.response;
-        const contentBlob = new Blob([rawArrayBuffer]);
-
-        let useData = contentBlob;
-        if (resourceType === 'audios') {
-          useData = rawArrayBuffer;
-        }
-        storeToIndexedDB(resourceType, uid, useData);
-        assignToResource(resourceType, uid, useData);
-
-        log(resourceUrl + ' loaded!');
-      };
-      xhRequest.onerror = (eventObj) => {
-        const message = resourceUrl + ' error! (Request)';
-        loadErrors += 1;
-        log(message);
-        if (system.stopOnError) {
-          error(message);
-        }
-      };
-      xhRequest.onprogress = (eventObj) => {
-        if (eventObj.lengthComputable) {
-          // let percentComplete = eventObj.loaded / eventObj.total;
-          // do something with this
-        }
-      };
-
-      // Simple DRM 2, Only allow access with custom header
-      // TODO: Dynamic Header? More Header?
-      xhRequest.setRequestHeader('CADV-ENGINE', '1.0');
-      xhRequest.send();
-    };
-
-    const assignToResource = (resourceType, uid, resourceData) => {
-      switch (resourceType) {
-        case 'images': {
-          const newImage = new Image();
-          newImage.src = URL.createObjectURL(resourceData);
-          resources.images[uid] = newImage;
-          break;
-        }
-        case 'videos': {
-          const newVideo = document.createElement('video');
-          newVideo.src = URL.createObjectURL(resourceData);
-          resources.videos[uid] = newVideo;
-          break;
-        }
-        case 'audios': {
-          audio.context.decodeAudioData(resourceData, (buffer) => {
-            resources.audios[uid] = buffer;
-            log(uid + '(' + resourceType + ') decoded!');
-          }, () => {
-            // Error Callback
-            const message = uid + '(' + resourceType + ') error! (Decode)';
-            loadErrors += 1;
-            log(message);
-            if (system.stopOnError) {
-              error(message);
-            }
-          });
-          break;
-        }
-        default:
-          break;
-      }
-    };
-
-    const afterInit = () => {
-      // Init Audio related in Preload
-      if (!initAudio()) {
-        log('Unable to create audio context. Web Audio API might be not available.');
-        log('No audio will be loaded.');
-
-        // Empty Audio list
-        preload.audios = {};
-      }
-
-      for (let i = 0, keys = Object.keys(preload); i < keys.length; i++) {
-        const resourceType = keys[i];
-        if (!$.isEmptyObject(preload[resourceType])) {
-          if (resourceType === 'audios' && !system.useAudio) {
-            log('Skipping audio list. (UseAudio disabled)');
-            continue;
-          }
-          log('Total of preload ' + resourceType + ': ' + Object.keys(preload[resourceType]).length);
-
-          const idKeys = Object.keys(preload[resourceType]);
-          for (let j = 0; j < idKeys.length; j++) {
-            // Load Resource
-            // Attempt to retrieve from Storage, load from XHR when empty
-            const resourceID = idKeys[j];
-            getFromIndexedDB(resourceType, resourceID, storageCallback);
-          }
-        } else {
-          log('Preload list of ' + resourceType + ' is empty!');
-        }
-      }
-    };
-
-  };
-
-  ////////////////////
-  // Custom variables
-  ////////////////////
-  // Custom variables that user can add them and manipulate them.
-  const customVars = {};
-
-  const getCustomVariable = (keyName) => {
-    if (customVars[keyName] === undefined) {
-      return null;
-    }
-    return customVars[keyName];
-  };
-
-  const setCustomVariable = (keyName, value) => {
-    customVars[keyName] = value;
-    return customVars[keyName];
-  };
-
   ////////////////////
   // Audio Component
   ////////////////////
@@ -606,6 +421,193 @@ module.exports = (() => {
   const stopAudio = (audioType) => {
     audio[audioType + 'out'].stop();
   };
+  ////////////////////
+  // (END) Audio Comp.
+  ////////////////////
+
+  /**
+   * Add resource to preload list
+   *
+   * @param string resourceType | image, audio, video
+   * @param string resourceID | ID to be use later on manipulating them (Strict no multibyte string)
+   * @param string resourceURL | Source of Resource
+   * @return void
+   */
+  const addPreloadResource = (resourceType, resourceID, resourceURL) => {
+    switch (resourceType) {
+      case 'image':
+        preload.images[resourceID] = resourceURL;
+        break;
+      case 'audio':
+        preload.audios[resourceID] = resourceURL;
+        break;
+      case 'video':
+        preload.videos[resourceID] = resourceURL;
+        break;
+      default: {
+        const message = resourceType + ' is not a valid resource type!';
+        log(message);
+        if (system.stopOnError) {
+          error(message);
+        }
+        break;
+      }
+    }
+    log(resourceURL + ' is added to preload list!');
+  };
+
+  /**
+   * Start the resource loading.
+   *
+   * @return void
+   */
+  const startPreloadResources = () => {
+
+    if (states.startedPreload) {
+      log('Preload started');
+      return;
+    }
+    states.startedPreload = true;
+
+    const assignToResource = (resourceType, uid, resourceData) => {
+      switch (resourceType) {
+        case 'images': {
+          const newImage = new Image();
+          newImage.src = URL.createObjectURL(resourceData);
+          resources.images[uid] = newImage;
+          break;
+        }
+        case 'videos': {
+          const newVideo = document.createElement('video');
+          newVideo.src = URL.createObjectURL(resourceData);
+          resources.videos[uid] = newVideo;
+          break;
+        }
+        case 'audios': {
+          audio.context.decodeAudioData(resourceData, (buffer) => {
+            resources.audios[uid] = buffer;
+            log(uid + '(' + resourceType + ') decoded!');
+          }, () => {
+            // Error Callback
+            const message = uid + '(' + resourceType + ') error! (Decode)';
+            loadErrors += 1;
+            log(message);
+            if (system.stopOnError) {
+              error(message);
+            }
+          });
+          break;
+        }
+        default:
+          break;
+      }
+    };
+
+    const loadResourceFromXHR = (resourceType, uid, resourceUrl) => {
+      // Simple DRM 1, CORS policy apply to XHR in the new browsers.
+      const xhRequest = new XMLHttpRequest();
+      xhRequest.open('GET', resourceUrl, true);
+      xhRequest.responseType = 'arraybuffer';
+      xhRequest.onload = (eventObj) => {
+        const rawArrayBuffer = this.response;
+        const contentBlob = new Blob([rawArrayBuffer]);
+
+        let useData = contentBlob;
+        if (resourceType === 'audios') {
+          useData = rawArrayBuffer;
+        }
+        storeToIndexedDB(resourceType, uid, useData);
+        assignToResource(resourceType, uid, useData);
+
+        log(resourceUrl + ' loaded!');
+      };
+      xhRequest.onerror = (eventObj) => {
+        const message = resourceUrl + ' error! (Request)';
+        loadErrors += 1;
+        log(message);
+        if (system.stopOnError) {
+          error(message);
+        }
+      };
+      xhRequest.onprogress = (eventObj) => {
+        if (eventObj.lengthComputable) {
+          // let percentComplete = eventObj.loaded / eventObj.total;
+          // do something with this
+        }
+      };
+
+      // Simple DRM 2, Only allow access with custom header
+      // TODO: Dynamic Header? More Header?
+      xhRequest.setRequestHeader('CADV-ENGINE', '1.0');
+      xhRequest.send();
+    };
+
+    const storageCallback = (resourceType, uid, resourceData) => {
+      if (resourceData != null) {
+        assignToResource(resourceType, uid, resourceData);
+      } else {
+        loadResourceFromXHR(resourceType, uid, preload[resourceType][uid]);
+      }
+    };
+
+    const afterInit = () => {
+      // Init Audio related in Preload
+      if (!initAudio()) {
+        log('Unable to create audio context. Web Audio API might be not available.');
+        log('No audio will be loaded.');
+
+        // Empty Audio list
+        preload.audios = {};
+      }
+
+      for (let i = 0, keys = Object.keys(preload); i < keys.length; i++) {
+        const resourceType = keys[i];
+        if (!$.isEmptyObject(preload[resourceType])) {
+          if (resourceType === 'audios' && !system.useAudio) {
+            log('Skipping audio list. (UseAudio disabled)');
+            continue;
+          }
+          log('Total of preload ' + resourceType + ': ' + Object.keys(preload[resourceType]).length);
+
+          const idKeys = Object.keys(preload[resourceType]);
+          for (let j = 0; j < idKeys.length; j++) {
+            // Load Resource
+            // Attempt to retrieve from Storage, load from XHR when empty
+            const resourceID = idKeys[j];
+            getFromIndexedDB(resourceType, resourceID, storageCallback);
+          }
+        } else {
+          log('Preload list of ' + resourceType + ' is empty!');
+        }
+      }
+    };
+
+    iDBInit();
+    let dbInitTimer = setInterval(() => {
+      if (states.iDBInit) {
+        clearInterval(dbInitTimer);
+        afterInit();
+      }
+    }, 100);
+  };
+
+  ////////////////////
+  // Custom variables
+  ////////////////////
+  // Custom variables that user can add them and manipulate them.
+  const customVars = {};
+
+  const getCustomVariable = (keyName) => {
+    if (customVars[keyName] === undefined) {
+      return null;
+    }
+    return customVars[keyName];
+  };
+
+  const setCustomVariable = (keyName, value) => {
+    customVars[keyName] = value;
+    return customVars[keyName];
+  };
 
   ////////////////////
   // Text Output
@@ -663,7 +665,7 @@ module.exports = (() => {
       cssStorages[componentName + 'CSS'][propertyName] = propertyValue;
     }
     return cssStorages[componentName + 'CSS'];
-  }
+  };
 
   ////////////////////
   // Core (Draw)
