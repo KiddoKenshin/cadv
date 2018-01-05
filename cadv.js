@@ -1,4 +1,4 @@
-/*! Fri Jan 05 2018 14:34:49 GMT+0900 (JST) */
+/*! Fri Jan 05 2018 17:13:21 GMT+0900 (JST) */
 (function webpackUniversalModuleDefinition(root, factory) {
 	if(typeof exports === 'object' && typeof module === 'object')
 		module.exports = factory();
@@ -79,7 +79,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-/**!
+/**
  * CADV - HTML5 "C"anvas based "ADV"enture game engine.
  * Just another Visual Novel game engine.
  * Visual Novel games are consider as "Adventure" games in Japan.
@@ -109,7 +109,8 @@ return /******/ (function(modules) { // webpackBootstrap
  * Current Progress: Make it work again!
  *
  * Rough DEMO using CADV: http://furi2purei.com/index.min.html
-//*/
+ */
+
 
 
 var _animejs = __webpack_require__(1);
@@ -124,31 +125,33 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 module.exports = function () {
 
+  var cadv = undefined;
+
   ////////////////////
   // Setting & Utils
   ////////////////////
   // System Settings, can be modify to suit user's needs
   var system = {
-    'debug': false, // Debug mode
-    'stopOnError': true, // Stop engine when error occured
-    'title': 'Canvas_Adventure_Engine', // Rename-able
-    'version': '', // Set by user, to check save files?
-    'width': 1280, // Game Width
-    'height': 720, // Game Height
-    'defaultBgColor': '#000000', // Default background color
-    'screenScale': 1.0, // Screen Scaling (Game size / Screen size), Renew Scaling whenever Screen size changed
-    'autoScale': false, // Perform auto scaling (Fit to screen)
+    debug: false, // Debug mode
+    stopOnError: true, // Stop engine when error occured
+    title: 'Canvas_Adventure_Engine', // Rename-able
+    version: '', // Set by user, to check save files?
+    width: 1280, // Game Width
+    height: 720, // Game Height
+    defaultBgColor: '#000000', // Default background color
+    screenScale: 1.0, // Screen Scaling (Game size / Screen size), Renew Scaling whenever Screen size changed
+    autoScale: false, // Perform auto scaling (Fit to screen)
 
-    'textSelector': undefined, // jQuery Object, Will be occupied after created.
-    'textSpeed': 30, // fps
+    textSelector: undefined, // jQuery Object, Will be occupied after created.
+    textSpeed: 30, // fps
 
-    'useAudio': false, // Web Audio API and other Audio related stuff
-    'masterVolume': 1, // MASTER Volume
-    'bgmVolume': 1, // BGM Volume
-    'sfxVolume': 1, // SFX Volume
-    'voiceVolume': 1, // VOICE Volume
+    useAudio: false, // Web Audio API and other Audio related stuff
+    masterVolume: 1, // MASTER Volume
+    bgmVolume: 1, // BGM Volume
+    sfxVolume: 1, // SFX Volume
+    voiceVolume: 1, // VOICE Volume
 
-    'videoVolume': 1 // Video Volume
+    videoVolume: 1 // Video Volume
   };
 
   /**
@@ -187,7 +190,7 @@ module.exports = function () {
    */
   var mobile = void 0;
   var isMobile = function isMobile() {
-    if (mobile == undefined) {
+    if (mobile === undefined) {
       mobile = false;
       if (navigator.userAgent.match(/(iPad|iPhone|iPod|Android|android)/g)) {
         mobile = true;
@@ -236,10 +239,10 @@ module.exports = function () {
   ////////////////////
   // Engine's letious states, only to be overwritten by system.
   var states = {
-    'iDBInit': false,
-    'startedPreload': false,
-    'canvasRefresh': false,
-    'outputingText': false
+    iDBInit: false,
+    startedPreload: false,
+    canvasRefresh: false,
+    outputingText: false
   };
 
   ////////////////////
@@ -394,16 +397,17 @@ module.exports = function () {
   // Resources Util
   ////////////////////
   // Stores resource informations to be used later in game.
+  var loadErrors = 0;
   var preload = {
     // Format store: {resourceID: resourceUrl}
-    'images': {},
-    'audios': {},
-    'videos': {}
+    images: {},
+    audios: {},
+    videos: {}
   };
   var resources = {
-    'images': {}, // Image (From Blob)
-    'audios': {}, // AudioBuffer (From ArrayBuffer)
-    'videos': {} // Video (From Blob)
+    images: {}, // Image (From Blob)
+    audios: {}, // AudioBuffer (From ArrayBuffer)
+    videos: {} // Video (From Blob)
   };
 
   /**
@@ -426,12 +430,14 @@ module.exports = function () {
         preload.videos[resourceID] = resourceURL;
         break;
       default:
-        var message = resourceType + ' is not a valid resource type!';
-        log(message);
-        if (system.stopOnError) {
-          error(message);
+        {
+          var message = resourceType + ' is not a valid resource type!';
+          log(message);
+          if (system.stopOnError) {
+            error(message);
+          }
+          break;
         }
-        break;
     }
     log(resourceURL + ' is added to preload list!');
   };
@@ -475,7 +481,7 @@ module.exports = function () {
         var contentBlob = new Blob([rawArrayBuffer]);
 
         var useData = contentBlob;
-        if (resourceType == 'audios') {
+        if (resourceType === 'audios') {
           useData = rawArrayBuffer;
         }
         storeToIndexedDB(resourceType, uid, useData);
@@ -485,7 +491,7 @@ module.exports = function () {
       };
       xhRequest.onerror = function (eventObj) {
         var message = resourceUrl + ' error! (Request)';
-        loadErrors++;
+        loadErrors += 1;
         log(message);
         if (system.stopOnError) {
           error(message);
@@ -507,28 +513,36 @@ module.exports = function () {
     var assignToResource = function assignToResource(resourceType, uid, resourceData) {
       switch (resourceType) {
         case 'images':
-          var newImage = new Image();
-          newImage.src = URL.createObjectURL(resourceData);
-          resources.images[uid] = newImage;
-          break;
+          {
+            var newImage = new Image();
+            newImage.src = URL.createObjectURL(resourceData);
+            resources.images[uid] = newImage;
+            break;
+          }
         case 'videos':
-          var newVideo = document.createElement('video');
-          newVideo.src = URL.createObjectURL(resourceData);
-          resources.videos[uid] = newVideo;
-          break;
+          {
+            var newVideo = document.createElement('video');
+            newVideo.src = URL.createObjectURL(resourceData);
+            resources.videos[uid] = newVideo;
+            break;
+          }
         case 'audios':
-          audio.context.decodeAudioData(resourceData, function (buffer) {
-            resources.audios[uid] = buffer;
-            log(uid + '(' + resourceType + ') decoded!');
-          }, function () {
-            // Error Callback
-            var message = uid + '(' + resourceType + ') error! (Decode)';
-            loadErrors++;
-            log(message);
-            if (system.stopOnError) {
-              error(message);
-            }
-          });
+          {
+            audio.context.decodeAudioData(resourceData, function (buffer) {
+              resources.audios[uid] = buffer;
+              log(uid + '(' + resourceType + ') decoded!');
+            }, function () {
+              // Error Callback
+              var message = uid + '(' + resourceType + ') error! (Decode)';
+              loadErrors += 1;
+              log(message);
+              if (system.stopOnError) {
+                error(message);
+              }
+            });
+            break;
+          }
+        default:
           break;
       }
     };
@@ -546,7 +560,7 @@ module.exports = function () {
       for (var i = 0, keys = Object.keys(preload); i < keys.length; i++) {
         var resourceType = keys[i];
         if (!$.isEmptyObject(preload[resourceType])) {
-          if (resourceType == 'audios' && !system.useAudio) {
+          if (resourceType === 'audios' && !system.useAudio) {
             log('Skipping audio list. (UseAudio disabled)');
             continue;
           }
@@ -570,7 +584,7 @@ module.exports = function () {
   // Custom variables
   ////////////////////
   // Custom variables that user can add them and manipulate them.
-  var customVars = new Object();
+  var customVars = {};
 
   var getCustomVariable = function getCustomVariable(keyName) {
     if (customVars[keyName] === undefined) {
@@ -589,46 +603,46 @@ module.exports = function () {
   ////////////////////
   // Component that stores audio related settings. (Volume settings, etc)
   var audio = {
-    'context': null
+    context: null
   };
 
   var initAudio = function initAudio() {
     if (system.useAudio) {
-      if (typeof AudioContext != 'undefined') {
+      if (typeof AudioContext !== 'undefined') {
         // Web Audio API is all unprefixed
         audio.context = new AudioContext();
-        audio['master'] = audio.context.createGain();
-        audio['master'].gain.value = system.masterVolume;
-        audio['master'].connect(audio.context.destination);
+        audio.master = audio.context.createGain();
+        audio.master.gain.value = system.masterVolume;
+        audio.master.connect(audio.context.destination);
 
         var audioType = ['bgm', 'sfx', 'voice'];
         for (var i = 0; i < audioType.length; i++) {
           var type = audioType[i];
           audio[type] = audio.context.createGain();
           audio[type].gain.value = system[type + 'Volume'];
-          audio[type].connect(audio['master']);
+          audio[type].connect(audio.master);
 
           audio[type + 'out'] = audio.context.createBufferSource();
           audio[type + 'out'].connect(audio[type]);
         }
         return true;
-      } else {
-        // FORCE to switch back
-        system.useAudio = false;
-        return false;
       }
+      // FORCE to switch back
+      system.useAudio = false;
+      return false;
     }
+    return false;
   };
 
   var playAudio = function playAudio(audioType, audioId) {
     var isLoop = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
 
     // BGM is always loop
-    if (audioType == 'bgm') {
+    if (audioType === 'bgm') {
       isLoop = true;
     }
 
-    if (audioType == 'sfx' && !isLoop) {
+    if (audioType === 'sfx' && !isLoop) {
       // Non-loop SFX is plainly disposable
       var audioOutput = audio.context.createBufferSource();
       audioOutput.buffer = resources.audios[audioId];
@@ -644,7 +658,7 @@ module.exports = function () {
   var playCrossfadeBGM = function playCrossfadeBGM(audioId, crossfadeDuration) {
     var bgmVolume = audio.context.createGain();
     bgmVolume.gain.value = 0;
-    bgmVolume.connect(cadv.audio['master']);
+    bgmVolume.connect(audio.master);
 
     var bgmOutput = audio.context.createBufferSource();
     bgmOutput.buffer = resources.audios[audioId];
@@ -672,7 +686,7 @@ module.exports = function () {
       audio.bgmout = bgmOutput;
       log('Crossfade complete!');
     });
-    //*/
+    */
   };
 
   var stopAudio = function stopAudio(audioType) {
@@ -684,35 +698,35 @@ module.exports = function () {
   ////////////////////
   // HTML5 Canvas do not recognize new lines, therefore using HTML/CSS features to output text.
   var textOutCSS = {
-    'position': 'absolute',
+    position: 'absolute',
     'font-family': 'Meiryo UI, Hiragino Maru Gothic ProN',
     'font-size': '16px',
     'line-height': '16px',
-    'left': '16px',
-    'top': '16px',
-    'color': '#FFFAFA',
-    'overflow': 'visible',
-    'cursor': 'default'
+    left: '16px',
+    top: '16px',
+    color: '#FFFAFA',
+    overflow: 'visible',
+    cursor: 'default'
   };
 
   var choiceBoxCSS = {
-    'width': '240px',
-    'height': '48px',
-    'color': '#111111',
+    width: '240px',
+    height: '48px',
+    color: '#111111',
     'text-align': 'center',
     'line-height': '48px',
-    'border': 'solid 1px #999999',
+    border: 'solid 1px #999999',
     'border-radius': '4px',
-    'margin': '12px 0 12px',
-    'cursor': 'default',
-    'opacity': '0'
+    margin: '12px 0 12px',
+    cursor: 'default',
+    opacity: '0'
   };
 
   var choiceBoxHoverCSS = {
     'font-size': '1.125em',
-    'color': '#666666',
-    'border': 'solid 1px #7777FF',
-    'opacity': '0.9'
+    color: '#666666',
+    border: 'solid 1px #7777FF',
+    opacity: '0.9'
   };
 
   /**
@@ -724,12 +738,12 @@ module.exports = function () {
    * @return object | All CSS values for the specified component
    */
   var setCSSValue = function setCSSValue(componentName, propertyName, propertyValue) {
-    if (componentName != 'textOut' && componentName != 'choiceBox' && componentName != 'choiceBoxHover') {
+    if (componentName !== 'textOut' && componentName !== 'choiceBox' && componentName !== 'choiceBoxHover') {
       log('Invalid componentName!');
       return null;
     }
 
-    if (propertyValue == undefined || propertyValue == null || propertyValue == '') {
+    if (propertyValue === undefined || propertyValue === null || propertyValue === '') {
       eval('delete ' + componentName + "CSS['" + propertyName + "'];");
     } else {
       eval(componentName + "CSS['" + propertyName + "'] = '" + propertyValue + "';");
@@ -744,17 +758,17 @@ module.exports = function () {
   // Core (Draw)
   ////////////////////
   // Draw the canvas, and outputs it to the browser.
-  var canvas = void 0,
-      canvasContext = void 0;
+  var canvas = void 0;
+  var canvasContext = void 0;
   var oldObjects = {
-    'backgrounds': {},
-    'characters': {},
-    'messagewindow': {}
+    backgrounds: {},
+    characters: {},
+    messagewindow: {}
   };
   var detailObjects = {
-    'backgrounds': {},
-    'characters': {},
-    'messagewindow': {}
+    backgrounds: {},
+    characters: {},
+    messagewindow: {}
   };
 
   var performScaling = function performScaling() {
@@ -789,47 +803,47 @@ module.exports = function () {
     var newImage = resources.images[imageID];
     var newCanvas = document.createElement('canvas');
     var detailObject = {
-      'id': uid, // Unique ID
-      'canvasObject': newCanvas, // Canvas Object Holder
-      'imageObject': newImage, // Image Object Holder
-      'type': imageType, //
-      'percentX': '0',
-      'percentY': '0',
-      'x': '0',
-      'y': '0',
-      'iWidth': newImage.width,
-      'iHeight': newImage.height,
-      'hFlip': '1', // Horizontal Flip
-      'vFlip': '1', // Vertical Flip
-      'opac': '1', // Opacity
-      'originX': '50%', // Transform Origin X
-      'originY': '50%', // Transform Origin Y
-      'stretch': false, // Enable stretch (Mainly used in BG)
-      'stretchScale': '1', // Stretched Scale
-      'imageScale': '1', // Image Scale
-      'rotate': '0', // Rotation (Degree, 0 - 360)
-      'xSlice': '1',
-      'ySlice': '1',
-      'xCount': '0',
-      'yCount': '0'
+      id: uid, // Unique ID
+      canvasObject: newCanvas, // Canvas Object Holder
+      imageObject: newImage, // Image Object Holder
+      type: imageType, //
+      percentX: '0',
+      percentY: '0',
+      x: '0',
+      y: '0',
+      iWidth: newImage.width,
+      iHeight: newImage.height,
+      hFlip: '1', // Horizontal Flip
+      vFlip: '1', // Vertical Flip
+      opac: '1', // Opacity
+      originX: '50%', // Transform Origin X
+      originY: '50%', // Transform Origin Y
+      stretch: false, // Enable stretch (Mainly used in BG)
+      stretchScale: '1', // Stretched Scale
+      imageScale: '1', // Image Scale
+      rotate: '0', // Rotation (Degree, 0 - 360)
+      xSlice: '1',
+      ySlice: '1',
+      xCount: '0',
+      yCount: '0'
       // Default Offset?
     };
 
     // Overwrites Parameter above if extra parameters were provided
-    if (extraParams != undefined) {
+    if (extraParams !== undefined) {
       for (var i = 0, keys = Object.keys(extraParams); i < keys.length; i++) {
         var key = keys[i];
-        if (detailObject[key] != undefined) {
+        if (detailObject[key] !== undefined) {
           detailObject[key] = extraParams[key];
         }
       }
     }
 
-    if (extraParams != undefined && extraParams.parentId != undefined && extraParams.childType != undefined) {
-      if (detailObjects[imageType][extraParams.parentId] == undefined) {
+    if (extraParams !== undefined && extraParams.parentId !== undefined && extraParams.childType !== undefined) {
+      if (detailObjects[imageType][extraParams.parentId] === undefined) {
         throw new Error('No such parent!');
       }
-      if (detailObjects[imageType][extraParams.parentId][extraParams.childType] == undefined) {
+      if (detailObjects[imageType][extraParams.parentId][extraParams.childType] === undefined) {
         detailObjects[imageType][extraParams.parentId][extraParams.childType] = {};
       }
       detailObjects[imageType][extraParams.parentId][extraParams.childType] = detailObject;
@@ -841,11 +855,13 @@ module.exports = function () {
   };
 
   var drawDetail = function drawDetail(detailObject, parentObject) {
-    if (oldObjects[detailObject.type][detailObject.id] == undefined) {
-      oldObjects[detailObject.type][detailObject.id] = $.extend({}, detailObject);
+    if (oldObjects[detailObject.type][detailObject.id] === undefined) {
+      // oldObjects[detailObject.type][detailObject.id] = $.extend({}, detailObject);
+      Object.assign(oldObjects[detailObject.type][detailObject.id], detailObject);
     }
 
-    detailObject.canvasObject.width = canvas.width;detailObject.canvasObject.height = canvas.height;
+    detailObject.canvasObject.width = canvas.width;
+    detailObject.canvasObject.height = canvas.height;
     if (parentObject !== undefined) {
       detailObject.canvasObject.width = system.width;
       detailObject.canvasObject.height = system.height;
@@ -860,27 +876,25 @@ module.exports = function () {
     if (detailObject.stretch) {
       detailObject.iWidth = detailObject.imageObject.width * detailObject.imageScale;
       detailObject.iHeight = detailObject.imageObject.height * detailObject.imageScale;
-      ncContext.scale(scale * parseInt(detailObject.hFlip), scale * parseInt(detailObject.vFlip));
+      ncContext.scale(scale * parseInt(detailObject.hFlip, 10), scale * parseInt(detailObject.vFlip, 10));
+    } else if (parentObject !== undefined) {
+      ncContext.scale(detailObject.hFlip * detailObject.imageScale, detailObject.vFlip * detailObject.imageScale);
     } else {
-      if (parentObject !== undefined) {
-        ncContext.scale(detailObject.hFlip * detailObject.imageScale, detailObject.vFlip * detailObject.imageScale);
-      } else {
-        // ncContext.scale(detailObject.hFlip * detailObject.imageScale * cadv.system.screenscale, detailObject.vFlip * detailObject.imageScale * cadv.system.screenscale);
-        ncContext.scale(detailObject.hFlip * detailObject.imageScale, detailObject.vFlip * detailObject.imageScale);
-      }
+      // ncContext.scale(detailObject.hFlip * detailObject.imageScale * cadv.system.screenscale, detailObject.vFlip * detailObject.imageScale * cadv.system.screenscale);
+      ncContext.scale(detailObject.hFlip * detailObject.imageScale, detailObject.vFlip * detailObject.imageScale);
     }
 
-    var useOriginX = detailObject.originX,
-        useOriginY = detailObject.originY;
-    if (useOriginX.indexOf('%') != 0) {
-      useOriginX = detailObject.imageObject.width * (parseInt(useOriginX) / 100);
+    var useOriginX = detailObject.originX;
+    var useOriginY = detailObject.originY;
+    if (useOriginX.indexOf('%') !== 0) {
+      useOriginX = detailObject.imageObject.width * (parseInt(useOriginX, 10) / 100);
     }
-    if (useOriginY.indexOf('%') != 0) {
-      useOriginY = detailObject.imageObject.height * (parseInt(useOriginY) / 100);
+    if (useOriginY.indexOf('%') !== 0) {
+      useOriginY = detailObject.imageObject.height * (parseInt(useOriginY, 10) / 100);
     }
 
     ncContext.translate(useOriginX, useOriginY);
-    if (parseInt(detailObject.rotate) != 0) {
+    if (parseInt(detailObject.rotate, 10) !== 0) {
       ncContext.rotate(detailObject.rotate * (Math.PI / 180));
     }
     ncContext.translate(-useOriginX, -useOriginY);
@@ -889,10 +903,10 @@ module.exports = function () {
 
     var useX = detailObject.x;
     var useY = detailObject.y;
-    var prevXPercent = oldObjects[detailObject.type][detailObject.id]['percentX'];
-    var prevYPercent = oldObjects[detailObject.type][detailObject.id]['percentY'];
-    if (detailObject.percentX != prevXPercent) {
-      useX = (detailObject.iWidth - detailObject.imageObject.width) / detailObject.imageScale * (parseInt(detailObject.percentX) / 100) * -1; // This Works
+    var prevXPercent = oldObjects[detailObject.type][detailObject.id].percentX;
+    var prevYPercent = oldObjects[detailObject.type][detailObject.id].percentY;
+    if (detailObject.percentX !== prevXPercent) {
+      useX = (detailObject.iWidth - detailObject.imageObject.width) / detailObject.imageScale * (parseInt(detailObject.percentX, 10) / 100) * -1; // This Works
       // useX = ((this.iWidth - canvas.width) / this.iScale) * (parseInt(this.percentX) / 100) * -1;
       if (!isFinite(useX)) {
         useX = '0';
@@ -907,13 +921,13 @@ module.exports = function () {
     }
 
     // TODO: Logic for Percent Y differs from Percent X, needs more testing
-    if (detailObject.percentY != prevYPercent) {
+    if (detailObject.percentY !== prevYPercent) {
       var useScale = detailObject.imageScale;
       if (detailObject.stretch) {
         useScale = detailObject.stretchScale * detailObject.imageScale;
       }
-      // useY = ((this.iHeight - image.height) / this.iScale) * (parseInt(this.percentY) / 100) * -1; // Not Working
-      useY = (detailObject.imageObject.height - canvas.height / useScale) * (parseInt(detailObject.percentY) / 100) * -1; // It works!
+      // useY = ((this.iHeight - image.height) / this.iScale) * (parseInt(this.percentY, 10) / 100) * -1; // Not Working
+      useY = (detailObject.imageObject.height - canvas.height / useScale) * (parseInt(detailObject.percentY, 10) / 100) * -1; // It works!
       if (!isFinite(useY)) {
         useY = '0';
       }
@@ -927,15 +941,15 @@ module.exports = function () {
     }
     // log(useY);
 
-    if (detailObject.xSlice == '1' && detailObject.ySlice == '1') {
+    if (detailObject.xSlice === '1' && detailObject.ySlice === '1') {
       // ncContext.drawImage(detailObject.imageObject, useX, useY, detailObject.imageObject.width * cadv.system.screenscale, detailObject.imageObject.height * cadv.system.screenscale);
       // ncContext.drawImage(detailObject.imageObject, 0, 0, detailObject.imageObject.width, detailObject.imageObject.height, useX, useY, detailObject.imageObject.width * cadv.system.screenscale, detailObject.imageObject.height * cadv.system.screenscale);
       ncContext.drawImage(detailObject.imageObject, 0, 0, detailObject.imageObject.width, detailObject.imageObject.height, useX, useY, detailObject.imageObject.width, detailObject.imageObject.height);
     } else {
       var xSize = detailObject.imageObject.width / detailObject.xSlice;
       var ySize = detailObject.imageObject.height / detailObject.ySlice;
-      var xOffset = xSize * parseInt(detailObject.xCount);
-      var yOffset = ySize * parseInt(detailObject.yCount);
+      var xOffset = xSize * parseInt(detailObject.xCount, 10);
+      var yOffset = ySize * parseInt(detailObject.yCount, 10);
       ncContext.drawImage(detailObject.imageObject, xOffset, yOffset, xSize, ySize, parseFloat(useX) + parseFloat(parentObject.x), parseFloat(useY) + parseFloat(parentObject.y), xSize, ySize);
 
       // log(ySize);
@@ -945,7 +959,7 @@ module.exports = function () {
 
     oldObjects[detailObject.type][detailObject.id] = $.extend({}, detailObject);
 
-    if (detailObject.type == 'characters' && detailObject.face != undefined) {
+    if (detailObject.type === 'characters' && detailObject.face !== undefined) {
       ncContext.drawImage(undefined.drawDetail(detailObject.face, detailObject), 0, 0);
     }
 
@@ -959,12 +973,11 @@ module.exports = function () {
     var widthOffset = 0;
     var heightOffset = 0;
 
-    if (system.screenscale != '1.0') {
+    if (system.screenscale !== '1.0') {
       widthOffset = Math.round(window.innerWidth - system.width * system.screenScale);
       heightOffset = Math.round(window.innerHeight - system.height * system.screenScale);
       // log($(window).height());
     }
-    //*/
 
     // DEV NOTES:
     // http://stackoverflow.com/questions/18565395/why-does-canvas-context-drawimage-fail-on-iphone
@@ -1023,7 +1036,7 @@ module.exports = function () {
     canvasContext.scale(system.screenScale, system.screenScale);
 
     // Redraw everything & restore state
-    cadv.drawCanvas();
+    drawCanvas();
     canvasContext.restore();
 
     return states.canvasRefresh; // For jQuery.fx.timer
@@ -1035,7 +1048,7 @@ module.exports = function () {
       return;
     }
 
-    if (detailObjects.messagewindow.base == undefined) {
+    if (detailObjects.messagewindow.base === undefined) {
       log('Message Window not ready!');
       setTimeout(setPosition, 1000);
       return;
@@ -1043,7 +1056,7 @@ module.exports = function () {
 
     // TODO: Center canvas content if browser width is larger than canvas contents, even if scale not applied?
 
-    if (system.screenScale != 1.0) {
+    if (system.screenScale !== 1.0) {
       var widthOffset = Math.round(window.innerWidth - system.width * system.screenScale) / 2;
       var heightOffset = Math.round(window.innerHeight - system.height * system.screenScale) / 2;
 
@@ -1079,7 +1092,7 @@ module.exports = function () {
     states.canvasRefresh = true;
     // jQuery.fx.timer(resetCanvas);
 
-    if (callback !== undefined && typeof callback == 'function') {
+    if (callback !== undefined && typeof callback === 'function') {
       callback();
     }
 
@@ -1130,8 +1143,8 @@ module.exports = function () {
     // $('head').prepend('<style>*{padding:0;margin:0;}::-webkit-scrollbar{display: none;}canvas{vertical-align:top;}.pointer{cursor:pointer;}' + stringTextOutCSS + stringChoiceBoxCSS + stringChoiceBoxHoverCSS + '</style>');
 
     var timer = setInterval(function () {
-      if (Object.keys(preload.images).length + Object.keys(preload.audios).length + Object.keys(preload.videos).length - loadErrors == Object.keys(resources.images).length + Object.keys(resources.audios).length + Object.keys(resources.videos).length) {
-        clearTimeout(timer);
+      if (Object.keys(preload.images).length + Object.keys(preload.audios).length + (Object.keys(preload.videos).length - loadErrors) === Object.keys(resources.images).length + Object.keys(resources.audios).length + Object.keys(resources.videos).length) {
+        clearInterval(timer);
 
         // Create Text Output
         var newDiv = document.createElement('div');
@@ -1145,11 +1158,11 @@ module.exports = function () {
           performScaling();
         }
 
-        if (callback !== undefined && typeof callback == 'function') {
+        if (callback !== undefined && typeof callback === 'function') {
           callback();
         } else {
           // Ladies and Gentlemen, start your engines!
-          //cadv.start();
+          // start();
         }
       }
     }, 500);
@@ -1165,31 +1178,31 @@ module.exports = function () {
       switch (inputLength.charAt(textPosition)) {
         case '<':
           // Tag Striper (example: <span>)
-          while (inputLength.charAt(textPosition) != '>') {
-            textPosition++;
+          while (inputLength.charAt(textPosition) !== '>') {
+            textPosition += 1;
           }
           break;
         case '&':
           // HTML Symbol Skipper (example: &amp;)
-          while (inputLength.charAt(textPosition) != ';') {
-            textPosition++;
+          while (inputLength.charAt(textPosition) !== ';') {
+            textPosition += 1;
           }
           break;
         default:
           // Add Position Value
-          textPosition++;
+          textPosition += 1;
           break;
       }
 
       // system.textSelector.html(inputString.substring(0, textPosition));
 
       // Break Condition
-      if (textPosition == inputLength || !states.outputingText) {
+      if (textPosition === inputLength || !states.outputingText) {
         // system.textSelector.html(inputString.substring(0, inputLength)); // Complete text
-        textvisual._outputingText = false;
+        states.outputingText = false;
 
         // Show Button?
-        //showButton();
+        // showButton();
 
         // Delete variable to lessen memory consumption
         // FIXME: (Not helping at all?, Remove?)
@@ -1235,7 +1248,7 @@ module.exports = function () {
         // Space: Show Hide Message & Window
         break;
       case 17:
-        if (keyLocation == KeyboardEvent.DOM_KEY_LOCATION_RIGHT) {
+        if (keyLocation === KeyboardEvent.DOM_KEY_LOCATION_RIGHT) {
           // Right Control: Skip mode
         }
         break;
@@ -1260,7 +1273,7 @@ module.exports = function () {
 
     switch (whichKey) {
       case 17:
-        if (keyLocation == KeyboardEvent.DOM_KEY_LOCATION_RIGHT) {
+        if (keyLocation === KeyboardEvent.DOM_KEY_LOCATION_RIGHT) {
           // Right Control: Disable Skip Mode
         }
         break;
