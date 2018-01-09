@@ -37,8 +37,6 @@ import screenfull from 'screenfull';
 
 module.exports = (() => {
 
-  const cadv = this;
-
   ////////////////////
   // Setting & Utils
   ////////////////////
@@ -509,7 +507,7 @@ module.exports = (() => {
       xhRequest.open('GET', resourceUrl, true);
       xhRequest.responseType = 'arraybuffer';
       xhRequest.onload = (eventObj) => {
-        const rawArrayBuffer = this.response;
+        const rawArrayBuffer = xhRequest.response;
         const contentBlob = new Blob([rawArrayBuffer]);
 
         let useData = contentBlob;
@@ -562,7 +560,7 @@ module.exports = (() => {
 
       for (let i = 0, keys = Object.keys(preload); i < keys.length; i++) {
         const resourceType = keys[i];
-        if (!$.isEmptyObject(preload[resourceType])) {
+        if (Object.keys(preload[resourceType]).length !== 0) {
           if (resourceType === 'audios' && !system.useAudio) {
             log('Skipping audio list. (UseAudio disabled)');
             continue;
@@ -769,8 +767,7 @@ module.exports = (() => {
 
   const drawDetail = (detailObject, parentObject) => {
     if (oldObjects[detailObject.type][detailObject.id] === undefined) {
-      // oldObjects[detailObject.type][detailObject.id] = $.extend({}, detailObject);
-      Object.assign(oldObjects[detailObject.type][detailObject.id], detailObject);
+      oldObjects[detailObject.type][detailObject.id] = Object.assign({}, detailObject);
     }
 
     detailObject.canvasObject.width = canvas.width;
@@ -870,10 +867,10 @@ module.exports = (() => {
       // delete xSize, ySize, xOffset, yOffset;
     }
 
-    oldObjects[detailObject.type][detailObject.id] = $.extend({}, detailObject);
+    oldObjects[detailObject.type][detailObject.id] = Object.assign({}, detailObject);
 
     if (detailObject.type === 'characters' && detailObject.face !== undefined) {
-      ncContext.drawImage(this.drawDetail(detailObject.face, detailObject), 0, 0);
+      ncContext.drawImage(drawDetail(detailObject.face, detailObject), 0, 0);
     }
 
     // delete ncContext, useX, useY;
@@ -885,12 +882,8 @@ module.exports = (() => {
 
     let widthOffset = 0;
     let heightOffset = 0;
-
-    if (system.screenscale !== '1.0') {
-      widthOffset = Math.round(window.innerWidth - (system.width * system.screenScale));
-      heightOffset = Math.round(window.innerHeight - (system.height * system.screenScale));
-      // log($(window).height());
-    }
+    widthOffset = Math.round(window.innerWidth - (system.width * system.screenScale));
+    heightOffset = Math.round(window.innerHeight - (system.height * system.screenScale));
 
     // DEV NOTES:
     // http://stackoverflow.com/questions/18565395/why-does-canvas-context-drawimage-fail-on-iphone
@@ -901,11 +894,11 @@ module.exports = (() => {
       const uid = keys[i];
       if (isMobile()) {
         // canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
-        canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, canvas.width, canvas.height);
+        canvasContext.drawImage(drawDetail(detailObjects.backgrounds[uid]), 0, 0, canvas.width, canvas.height);
       } else {
         // canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
         // canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
-        canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
+        canvasContext.drawImage(drawDetail(detailObjects.backgrounds[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
       }
     }
 
@@ -913,11 +906,11 @@ module.exports = (() => {
       const uid = keys[i];
       if (isMobile()) {
         // canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
-        canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, canvas.width, canvas.height);
+        canvasContext.drawImage(drawDetail(detailObjects.characters[uid]), 0, 0, canvas.width, canvas.height);
       } else {
         // canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
         // canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
-        canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
+        canvasContext.drawImage(drawDetail(detailObjects.characters[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
       }
     }
 
@@ -925,11 +918,11 @@ module.exports = (() => {
       const uid = keys[i];
       if (isMobile()) {
         // canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
-        canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, canvas.width, canvas.height);
+        canvasContext.drawImage(drawDetail(detailObjects.messagewindow[uid]), 0, 0, canvas.width, canvas.height);
       } else {
         // canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
         // canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
-        canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
+        canvasContext.drawImage(drawDetail(detailObjects.messagewindow[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
       }
     }
 
@@ -953,7 +946,10 @@ module.exports = (() => {
     drawCanvas();
     canvasContext.restore();
 
-    return states.canvasRefresh; // For jQuery.fx.timer
+    // return states.canvasRefresh; // For jQuery.fx.timer
+    if (states.canvasRefresh) {
+      window.requestAnimationFrame(resetCanvas);
+    }
   };
 
   const setPosition = () => {
@@ -968,44 +964,34 @@ module.exports = (() => {
       return;
     }
 
-    // TODO: Center canvas content if browser width is larger than canvas contents, even if scale not applied?
+    let widthOffset = Math.round(window.innerWidth - (system.width * system.screenScale)) / 2;
+    let heightOffset = Math.round(window.innerHeight - (system.height * system.screenScale)) / 2;
 
-    if (system.screenScale !== 1.0) {
-      let widthOffset = Math.round(window.innerWidth - (system.width * system.screenScale)) / 2;
-      let heightOffset = Math.round(window.innerHeight - (system.height * system.screenScale)) / 2;
-
-      if (system.screenScale <= 0.5) {
-        heightOffset = 0;
-        // $('body').css('height', (cadv.system.height / 2) + 'px');
-      }
-
-      /* FIXME: Use Vanilla JS
-      $('canvas#cadv').css({
-        'position' : 'fixed', // absolute?
-        'left' : widthOffset + 'px',
-        'top' : heightOffset + 'px'
-      });
-
-      system.textSelector.css({
-        'left' : ((parseInt(textOutCSS.left) + (detailObjects.messagewindow.base.x)) * system.screenScale) + widthOffset + 'px',
-        'top' : ((parseInt(textOutCSS.top) + (detailObjects.messagewindow.base.y)) * system.screenScale) + heightOffset + 'px',
-        'transform' : 'scale(' + system.screenScale + ')',
-        'transform-origin' : '0% 0%'
-      });
-      //*/
-    } else {
-      /* FIXME: Use Vanilla JS
-      system.textSelector.css({
-        'left' : (parseInt(textOutCSS.left) + (detailObjects.messagewindow.base.x)) + 'px',
-        'top' : (parseInt(textOutCSS.top) + (detailObjects.messagewindow.base.y)) + 'px',
-      });
-      //*/
+    if (system.screenScale <= 0.5) {
+      heightOffset = 0;
     }
+
+    const cadvCV = document.getElementById('cadv');
+    cadvCV.style.position = 'fixed'; // absolute?
+    cadvCV.style.left = (widthOffset + 'px');
+    cadvCV.style.top = (heightOffset + 'px');
+
+    system.textSelector.style.left = ((parseInt(cssStorages.textOutCSS.left, 10) + parseInt(detailObjects.messagewindow.base.x, 10)) * system.screenScale) + widthOffset + 'px';
+    system.textSelector.style.top = ((parseInt(cssStorages.textOutCSS.top, 10) + parseInt(detailObjects.messagewindow.base.y, 10)) * system.screenScale) + heightOffset + 'px';
+    if (system.screenScale !== 1.0) {
+      system.textSelector.style.transform = 'scale(' + system.screenScale + ')';
+      system.textSelector.style.transformOrigin = '0% 0%';
+    } else {
+      system.textSelector.style.transform = '';
+      system.textSelector.style.transformOrigin = '';
+    }
+
   };
 
   const start = (callback) => {
     states.canvasRefresh = true;
     // jQuery.fx.timer(resetCanvas);
+    window.requestAnimationFrame(resetCanvas);
 
     if (callback !== undefined && typeof callback === 'function') {
       callback();
@@ -1028,34 +1014,37 @@ module.exports = (() => {
     canvasContext = canvas.getContext('2d');
 
     // Append Canvas to HTML Document(Body)
-    // $('body').empty().append(canvas).css('background-color', system.defaultBgColor);
+    document.body.innerHTML = '';
+    document.body.append(canvas);
+    document.body.style.backgroundColor = system.defaultBgColor;
+
 
     // CSS for textOut
     let stringTextOutCSS = '';
-    for (let i = 0, keys = Object.keys(textOutCSS); i < keys.length; i++) {
+    for (let i = 0, keys = Object.keys(cssStorages.textOutCSS); i < keys.length; i++) {
       const key = keys[i];
-      stringTextOutCSS += (key + ':' + textOutCSS[key] + ';');
+      stringTextOutCSS += (key + ':' + cssStorages.textOutCSS[key] + ';');
     }
     stringTextOutCSS = 'div#textout{' + stringTextOutCSS + '}';
 
     // CSS for choiceBox
     let stringChoiceBoxCSS = '';
-    for (let i = 0, keys = Object.keys(choiceBoxCSS); i < keys.length; i++) {
+    for (let i = 0, keys = Object.keys(cssStorages.choiceBoxCSS); i < keys.length; i++) {
       const key = keys[i];
-      stringChoiceBoxCSS += (key + ':' + choiceBoxCSS[key] + ';');
+      stringChoiceBoxCSS += (key + ':' + cssStorages.choiceBoxCSS[key] + ';');
     }
     stringChoiceBoxCSS = 'div.choice{' + stringChoiceBoxCSS + '}';
 
     // CSS for choiceBoxHover
     let stringChoiceBoxHoverCSS = '';
-    for (let i = 0, keys = Object.keys(choiceBoxHoverCSS); i < keys.length; i++) {
+    for (let i = 0, keys = Object.keys(cssStorages.choiceBoxHoverCSS); i < keys.length; i++) {
       const key = keys[i];
-      stringChoiceBoxHoverCSS += (key + ':' + choiceBoxHoverCSS[key] + ';');
+      stringChoiceBoxHoverCSS += (key + ':' + cssStorages.choiceBoxHoverCSS[key] + ';');
     }
     stringChoiceBoxHoverCSS = 'div.choice.hovered{' + stringChoiceBoxHoverCSS + '}';
 
     // Default CSS settings for all browsers
-    // $('head').prepend('<style>*{padding:0;margin:0;}::-webkit-scrollbar{display: none;}canvas{vertical-align:top;}.pointer{cursor:pointer;}' + stringTextOutCSS + stringChoiceBoxCSS + stringChoiceBoxHoverCSS + '</style>');
+    document.head.innerHTML += '<style>*{padding:0;margin:0;}::-webkit-scrollbar{display: none;}canvas{vertical-align:top;}.pointer{cursor:pointer;}' + stringTextOutCSS + stringChoiceBoxCSS + stringChoiceBoxHoverCSS + '</style>';
 
     let timer = setInterval(() => {
       if ((Object.keys(preload.images).length + Object.keys(preload.audios).length + (Object.keys(preload.videos).length - loadErrors)) === (Object.keys(resources.images).length + Object.keys(resources.audios).length + Object.keys(resources.videos).length)) {
@@ -1065,8 +1054,8 @@ module.exports = (() => {
         const newDiv = document.createElement('div');
         newDiv.id = 'textout';
 
-        // $('body').append(newDiv);
-        // system.textSelector = $('div#textout');
+        document.body.append(newDiv);
+        system.textSelector = document.getElementById('textout');
 
         // If autoscaling enabled
         if (system.autoScale) {
@@ -1077,7 +1066,7 @@ module.exports = (() => {
           callback();
         } else {
           // Ladies and Gentlemen, start your engines!
-          // start();
+          start();
         }
 
       }
@@ -1110,10 +1099,12 @@ module.exports = (() => {
           break;
       }
       // system.textSelector.html(inputString.substring(0, textPosition));
+      system.textSelector.innerHTML = inputString.substring(0, textPosition);
 
       // Break Condition
       if (textPosition === inputLength || !states.outputingText) {
         // system.textSelector.html(inputString.substring(0, inputLength)); // Complete text
+        system.textSelector.innerHTML = inputString.substring(0, inputLength); // Complete text
         states.outputingText = false;
 
         // Show Button?
@@ -1243,6 +1234,21 @@ module.exports = (() => {
     getCustomVariable,
     setCustomVariable,
 
-    setCSSValue
+    // Resources
+    addPreloadResource,
+    startPreloadResources,
+
+    // Text CSS
+    setCSSValue,
+
+    detailObjects, // FIXME: Too dangerous to expose?
+    createImage,
+
+    setPosition, // FIXME: Too dangerous to expose?
+    canvasInit,
+    start,
+
+    // Library & Utils
+    anime // DirectCall to AnimeJS
   };
 })();
