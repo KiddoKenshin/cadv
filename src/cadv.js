@@ -670,12 +670,12 @@ module.exports = (() => {
   // Draw the canvas, and outputs it to the browser.
   let canvas;
   let canvasContext;
-  const oldObjects = {
+  const oldCanvasObjects = {
     backgrounds: {},
     characters: {},
     messagewindow: {}
   };
-  const detailObjects = {
+  const canvasObjects = {
     backgrounds: {},
     characters: {},
     messagewindow: {}
@@ -709,10 +709,22 @@ module.exports = (() => {
     canvas.height = system.height;
   };
 
+  const getCanvasObject = (imageType, uid) => {
+    return canvasObjects[imageType][uid];
+  };
+
+  const setCanvasObject = (imageType, uid, propertyName, propertyValue) => {
+    if (canvasObjects[imageType][uid] !== undefined) {
+      canvasObjects[imageType][uid][propertyName] = propertyValue;
+      return canvasObjects[imageType][uid];
+    }
+    return undefined;
+  };
+
   const createImage = (imageType, uid, imageID, extraParams) => {
     const newImage = resources.images[imageID];
     const newCanvas = document.createElement('canvas');
-    const detailObject = {
+    const imageProperties = {
       id: uid, // Unique ID
       canvasObject: newCanvas, // Canvas Object Holder
       imageObject: newImage, // Image Object Holder
@@ -743,137 +755,137 @@ module.exports = (() => {
     if (extraParams !== undefined) {
       for (let i = 0, keys = Object.keys(extraParams); i < keys.length; i++) {
         const key = keys[i];
-        if (detailObject[key] !== undefined) {
-          detailObject[key] = extraParams[key];
+        if (imageProperties[key] !== undefined) {
+          imageProperties[key] = extraParams[key];
         }
       }
     }
 
     if (extraParams !== undefined && extraParams.parentId !== undefined && extraParams.childType !== undefined) {
-      if (detailObjects[imageType][extraParams.parentId] === undefined) {
+      if (canvasObjects[imageType][extraParams.parentId] === undefined) {
         throw new Error('No such parent!');
       }
-      if (detailObjects[imageType][extraParams.parentId][extraParams.childType] === undefined) {
-        detailObjects[imageType][extraParams.parentId][extraParams.childType] = {};
+      if (canvasObjects[imageType][extraParams.parentId][extraParams.childType] === undefined) {
+        canvasObjects[imageType][extraParams.parentId][extraParams.childType] = {};
       }
-      detailObjects[imageType][extraParams.parentId][extraParams.childType] = detailObject;
+      canvasObjects[imageType][extraParams.parentId][extraParams.childType] = imageProperties;
     } else {
-      detailObjects[imageType][uid] = detailObject;
+      canvasObjects[imageType][uid] = imageProperties;
     }
 
     return uid;
   };
 
-  const drawDetail = (detailObject, parentObject) => {
-    if (oldObjects[detailObject.type][detailObject.id] === undefined) {
-      oldObjects[detailObject.type][detailObject.id] = Object.assign({}, detailObject);
+  const drawDetail = (imageProperties, parentObject) => {
+    if (oldCanvasObjects[imageProperties.type][imageProperties.id] === undefined) {
+      oldCanvasObjects[imageProperties.type][imageProperties.id] = Object.assign({}, imageProperties);
     }
 
-    detailObject.canvasObject.width = canvas.width;
-    detailObject.canvasObject.height = canvas.height;
+    imageProperties.canvasObject.width = canvas.width;
+    imageProperties.canvasObject.height = canvas.height;
     if (parentObject !== undefined) {
-      detailObject.canvasObject.width = system.width;
-      detailObject.canvasObject.height = system.height;
+      imageProperties.canvasObject.width = system.width;
+      imageProperties.canvasObject.height = system.height;
       // Need calculate both to acquire enough canvas size
     }
-    const ncContext = detailObject.canvasObject.getContext('2d');
+    const ncContext = imageProperties.canvasObject.getContext('2d');
 
-    let scale = canvas.width / detailObject.imageObject.width;
-    detailObject.stretchScale = scale;
-    scale *= detailObject.imageScale;
+    let scale = canvas.width / imageProperties.imageObject.width;
+    imageProperties.stretchScale = scale;
+    scale *= imageProperties.imageScale;
 
-    if (detailObject.stretch) {
-      detailObject.iWidth = detailObject.imageObject.width * detailObject.imageScale;
-      detailObject.iHeight = detailObject.imageObject.height * detailObject.imageScale;
-      ncContext.scale(scale * parseInt(detailObject.hFlip, 10), scale * parseInt(detailObject.vFlip, 10));
+    if (imageProperties.stretch) {
+      imageProperties.iWidth = imageProperties.imageObject.width * imageProperties.imageScale;
+      imageProperties.iHeight = imageProperties.imageObject.height * imageProperties.imageScale;
+      ncContext.scale(scale * parseInt(imageProperties.hFlip, 10), scale * parseInt(imageProperties.vFlip, 10));
     } else if (parentObject !== undefined) {
-      ncContext.scale(detailObject.hFlip * detailObject.imageScale, detailObject.vFlip * detailObject.imageScale);
+      ncContext.scale(imageProperties.hFlip * imageProperties.imageScale, imageProperties.vFlip * imageProperties.imageScale);
     } else {
-      // ncContext.scale(detailObject.hFlip * detailObject.imageScale * cadv.system.screenscale, detailObject.vFlip * detailObject.imageScale * cadv.system.screenscale);
-      ncContext.scale(detailObject.hFlip * detailObject.imageScale, detailObject.vFlip * detailObject.imageScale);
+      // ncContext.scale(imageProperties.hFlip * imageProperties.imageScale * cadv.system.screenscale, imageProperties.vFlip * imageProperties.imageScale * cadv.system.screenscale);
+      ncContext.scale(imageProperties.hFlip * imageProperties.imageScale, imageProperties.vFlip * imageProperties.imageScale);
     }
 
-    let useOriginX = detailObject.originX;
-    let useOriginY = detailObject.originY;
+    let useOriginX = imageProperties.originX;
+    let useOriginY = imageProperties.originY;
     if (useOriginX.indexOf('%') !== 0) {
-      useOriginX = detailObject.imageObject.width * (parseInt(useOriginX, 10) / 100);
+      useOriginX = imageProperties.imageObject.width * (parseInt(useOriginX, 10) / 100);
     }
     if (useOriginY.indexOf('%') !== 0) {
-      useOriginY = detailObject.imageObject.height * (parseInt(useOriginY, 10) / 100);
+      useOriginY = imageProperties.imageObject.height * (parseInt(useOriginY, 10) / 100);
     }
 
     ncContext.translate(useOriginX, useOriginY);
-    if (parseInt(detailObject.rotate, 10) !== 0) {
-      ncContext.rotate(detailObject.rotate * (Math.PI / 180));
+    if (parseInt(imageProperties.rotate, 10) !== 0) {
+      ncContext.rotate(imageProperties.rotate * (Math.PI / 180));
     }
     ncContext.translate(-useOriginX, -useOriginY);
 
-    ncContext.globalAlpha = detailObject.opac;
+    ncContext.globalAlpha = imageProperties.opac;
 
-    let useX = detailObject.x;
-    let useY = detailObject.y;
-    const prevXPercent = oldObjects[detailObject.type][detailObject.id].percentX;
-    const prevYPercent = oldObjects[detailObject.type][detailObject.id].percentY;
-    if (detailObject.percentX !== prevXPercent) {
-      useX = ((detailObject.iWidth - detailObject.imageObject.width) / detailObject.imageScale) * (parseInt(detailObject.percentX, 10) / 100) * -1; // This Works
+    let useX = imageProperties.x;
+    let useY = imageProperties.y;
+    const prevXPercent = oldCanvasObjects[imageProperties.type][imageProperties.id].percentX;
+    const prevYPercent = oldCanvasObjects[imageProperties.type][imageProperties.id].percentY;
+    if (imageProperties.percentX !== prevXPercent) {
+      useX = ((imageProperties.iWidth - imageProperties.imageObject.width) / imageProperties.imageScale) * (parseInt(imageProperties.percentX, 10) / 100) * -1; // This Works
       // useX = ((this.iWidth - canvas.width) / this.iScale) * (parseInt(this.percentX) / 100) * -1;
       if (!isFinite(useX)) {
         useX = '0';
       }
-      detailObject.x = useX;
+      imageProperties.x = useX;
     } else {
       // Renew percent X
-      detailObject.percentX = ((detailObject.x / ((detailObject.iWidth - detailObject.imageObject.width) / detailObject.imageScale)) * -100);
-      if (!isFinite(detailObject.percentX)) {
-        detailObject.percentX = '0';
+      imageProperties.percentX = ((imageProperties.x / ((imageProperties.iWidth - imageProperties.imageObject.width) / imageProperties.imageScale)) * -100);
+      if (!isFinite(imageProperties.percentX)) {
+        imageProperties.percentX = '0';
       }
     }
 
     // TODO: Logic for Percent Y differs from Percent X, needs more testing
-    if (detailObject.percentY !== prevYPercent) {
-      let useScale = detailObject.imageScale;
-      if (detailObject.stretch) {
-        useScale = detailObject.stretchScale * detailObject.imageScale;
+    if (imageProperties.percentY !== prevYPercent) {
+      let useScale = imageProperties.imageScale;
+      if (imageProperties.stretch) {
+        useScale = imageProperties.stretchScale * imageProperties.imageScale;
       }
       // useY = ((this.iHeight - image.height) / this.iScale) * (parseInt(this.percentY, 10) / 100) * -1; // Not Working
-      useY = ((detailObject.imageObject.height - (canvas.height / useScale))) * (parseInt(detailObject.percentY, 10) / 100) * -1; // It works!
+      useY = ((imageProperties.imageObject.height - (canvas.height / useScale))) * (parseInt(imageProperties.percentY, 10) / 100) * -1; // It works!
       if (!isFinite(useY)) {
         useY = '0';
       }
-      detailObject.y = useY;
+      imageProperties.y = useY;
     } else {
       // Renew percent Y
-      detailObject.percentY = ((detailObject.y / ((detailObject.iHeight - detailObject.imageObject.height) / detailObject.imageObject.iScale)) * -100);
-      if (!isFinite(detailObject.percentY)) {
-        detailObject.percentY = '0';
+      imageProperties.percentY = ((imageProperties.y / ((imageProperties.iHeight - imageProperties.imageObject.height) / imageProperties.imageObject.iScale)) * -100);
+      if (!isFinite(imageProperties.percentY)) {
+        imageProperties.percentY = '0';
       }
     }
     // log(useY);
 
-    if (detailObject.xSlice === 1 && detailObject.ySlice === 1) {
-      // ncContext.drawImage(detailObject.imageObject, useX, useY, detailObject.imageObject.width * cadv.system.screenscale, detailObject.imageObject.height * cadv.system.screenscale);
-      // ncContext.drawImage(detailObject.imageObject, 0, 0, detailObject.imageObject.width, detailObject.imageObject.height, useX, useY, detailObject.imageObject.width * cadv.system.screenscale, detailObject.imageObject.height * cadv.system.screenscale);
-      ncContext.drawImage(detailObject.imageObject, 0, 0, detailObject.imageObject.width, detailObject.imageObject.height, useX, useY, detailObject.imageObject.width, detailObject.imageObject.height);
+    if (imageProperties.xSlice === 1 && imageProperties.ySlice === 1) {
+      // ncContext.drawImage(imageProperties.imageObject, useX, useY, imageProperties.imageObject.width * cadv.system.screenscale, imageProperties.imageObject.height * cadv.system.screenscale);
+      // ncContext.drawImage(imageProperties.imageObject, 0, 0, imageProperties.imageObject.width, imageProperties.imageObject.height, useX, useY, imageProperties.imageObject.width * cadv.system.screenscale, imageProperties.imageObject.height * cadv.system.screenscale);
+      ncContext.drawImage(imageProperties.imageObject, 0, 0, imageProperties.imageObject.width, imageProperties.imageObject.height, useX, useY, imageProperties.imageObject.width, imageProperties.imageObject.height);
     } else {
-      const xSize = detailObject.imageObject.width / detailObject.xSlice;
-      const ySize = detailObject.imageObject.height / detailObject.ySlice;
-      const xOffset = xSize * parseInt(detailObject.xCount, 10);
-      const yOffset = ySize * parseInt(detailObject.yCount, 10);
-      ncContext.drawImage(detailObject.imageObject, xOffset, yOffset, xSize, ySize, parseFloat(useX) + parseFloat(parentObject.x), parseFloat(useY) + parseFloat(parentObject.y), xSize, ySize);
+      const xSize = imageProperties.imageObject.width / imageProperties.xSlice;
+      const ySize = imageProperties.imageObject.height / imageProperties.ySlice;
+      const xOffset = xSize * parseInt(imageProperties.xCount, 10);
+      const yOffset = ySize * parseInt(imageProperties.yCount, 10);
+      ncContext.drawImage(imageProperties.imageObject, xOffset, yOffset, xSize, ySize, parseFloat(useX) + parseFloat(parentObject.x), parseFloat(useY) + parseFloat(parentObject.y), xSize, ySize);
 
       // log(ySize);
 
       // delete xSize, ySize, xOffset, yOffset;
     }
 
-    oldObjects[detailObject.type][detailObject.id] = Object.assign({}, detailObject);
+    oldCanvasObjects[imageProperties.type][imageProperties.id] = Object.assign({}, imageProperties);
 
-    if (detailObject.type === 'characters' && detailObject.face !== undefined) {
-      ncContext.drawImage(drawDetail(detailObject.face, detailObject), 0, 0);
+    if (imageProperties.type === 'characters' && imageProperties.face !== undefined) {
+      ncContext.drawImage(drawDetail(imageProperties.face, imageProperties), 0, 0);
     }
 
     // delete ncContext, useX, useY;
-    return detailObject.canvasObject;
+    return imageProperties.canvasObject;
   };
 
   // TODO: Modify for other uses (Shooter, RPG, etc...)?
@@ -889,39 +901,39 @@ module.exports = (() => {
     // Explains canvasContext.drawImage (with 9 params) not working on iPhone but the one with 5 params does.
 
     // Background Layer
-    for (let i = 0, keys = Object.keys(detailObjects.backgrounds); i < keys.length; i++) {
+    for (let i = 0, keys = Object.keys(canvasObjects.backgrounds); i < keys.length; i++) {
       const uid = keys[i];
       if (isMobile()) {
-        // canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
-        canvasContext.drawImage(drawDetail(detailObjects.backgrounds[uid]), 0, 0, canvas.width, canvas.height);
+        // canvasContext.drawImage(this.drawDetail(canvasObjects.backgrounds[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
+        canvasContext.drawImage(drawDetail(canvasObjects.backgrounds[uid]), 0, 0, canvas.width, canvas.height);
       } else {
-        // canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
-        // canvasContext.drawImage(this.drawDetail(detailObjects.backgrounds[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
-        canvasContext.drawImage(drawDetail(detailObjects.backgrounds[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
+        // canvasContext.drawImage(this.drawDetail(canvasObjects.backgrounds[uid]), 0, 0, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
+        // canvasContext.drawImage(this.drawDetail(canvasObjects.backgrounds[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
+        canvasContext.drawImage(drawDetail(canvasObjects.backgrounds[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
       }
     }
 
-    for (let i = 0, keys = Object.keys(detailObjects.characters); i < keys.length; i++) {
+    for (let i = 0, keys = Object.keys(canvasObjects.characters); i < keys.length; i++) {
       const uid = keys[i];
       if (isMobile()) {
-        // canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
-        canvasContext.drawImage(drawDetail(detailObjects.characters[uid]), 0, 0, canvas.width, canvas.height);
+        // canvasContext.drawImage(this.drawDetail(canvasObjects.characters[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
+        canvasContext.drawImage(drawDetail(canvasObjects.characters[uid]), 0, 0, canvas.width, canvas.height);
       } else {
-        // canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
-        // canvasContext.drawImage(this.drawDetail(detailObjects.characters[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
-        canvasContext.drawImage(drawDetail(detailObjects.characters[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
+        // canvasContext.drawImage(this.drawDetail(canvasObjects.characters[uid]), 0, 0, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
+        // canvasContext.drawImage(this.drawDetail(canvasObjects.characters[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
+        canvasContext.drawImage(drawDetail(canvasObjects.characters[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
       }
     }
 
-    for (let i = 0, keys = Object.keys(detailObjects.messagewindow); i < keys.length; i++) {
+    for (let i = 0, keys = Object.keys(canvasObjects.messagewindow); i < keys.length; i++) {
       const uid = keys[i];
       if (isMobile()) {
-        // canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
-        canvasContext.drawImage(drawDetail(detailObjects.messagewindow[uid]), 0, 0, canvas.width, canvas.height);
+        // canvasContext.drawImage(this.drawDetail(canvasObjects.messagewindow[uid]), widthOffset, heightOffset, canvas.width, canvas.height);
+        canvasContext.drawImage(drawDetail(canvasObjects.messagewindow[uid]), 0, 0, canvas.width, canvas.height);
       } else {
-        // canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
-        // canvasContext.drawImage(this.drawDetail(detailObjects.messagewindow[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
-        canvasContext.drawImage(drawDetail(detailObjects.messagewindow[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
+        // canvasContext.drawImage(this.drawDetail(canvasObjects.messagewindow[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width * cadv.system.screenscale, cadv.system.height * cadv.system.screenscale);
+        // canvasContext.drawImage(this.drawDetail(canvasObjects.messagewindow[uid]), 0, 0, cadv.system.width, cadv.system.height, widthOffset, heightOffset, cadv.system.width, cadv.system.height);
+        canvasContext.drawImage(drawDetail(canvasObjects.messagewindow[uid]), 0, 0, system.width, system.height, 0, 0, system.width, system.height);
       }
     }
 
@@ -957,7 +969,7 @@ module.exports = (() => {
       return;
     }
 
-    if (detailObjects.messagewindow.base === undefined) {
+    if (canvasObjects.messagewindow.base === undefined) {
       log('Message Window not ready!');
       setTimeout(setPosition, 1000);
       return;
@@ -975,8 +987,8 @@ module.exports = (() => {
     cadvCV.style.left = (widthOffset + 'px');
     cadvCV.style.top = (heightOffset + 'px');
 
-    system.textSelector.style.left = ((parseInt(cssStorages.textOutCSS.left, 10) + parseInt(detailObjects.messagewindow.base.x, 10)) * system.screenScale) + widthOffset + 'px';
-    system.textSelector.style.top = ((parseInt(cssStorages.textOutCSS.top, 10) + parseInt(detailObjects.messagewindow.base.y, 10)) * system.screenScale) + heightOffset + 'px';
+    system.textSelector.style.left = ((parseInt(cssStorages.textOutCSS.left, 10) + parseInt(canvasObjects.messagewindow.base.x, 10)) * system.screenScale) + widthOffset + 'px';
+    system.textSelector.style.top = ((parseInt(cssStorages.textOutCSS.top, 10) + parseInt(canvasObjects.messagewindow.base.y, 10)) * system.screenScale) + heightOffset + 'px';
     if (system.screenScale !== 1.0) {
       system.textSelector.style.transform = 'scale(' + system.screenScale + ')';
       system.textSelector.style.transformOrigin = '0% 0%';
@@ -1016,7 +1028,6 @@ module.exports = (() => {
     document.body.innerHTML = '';
     document.body.append(canvas);
     document.body.style.backgroundColor = system.defaultBgColor;
-
 
     // CSS for textOut
     let stringTextOutCSS = '';
@@ -1244,7 +1255,8 @@ module.exports = (() => {
     // Text CSS
     setCSSValue,
 
-    detailObjects, // FIXME: Too dangerous to expose?
+    getCanvasObject,
+    setCanvasObject,
     createImage,
 
     setPosition, // FIXME: Too dangerous to expose?
