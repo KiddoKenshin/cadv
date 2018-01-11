@@ -392,28 +392,27 @@ module.exports = (() => {
     bgmOutput.start(0);
 
     log('Crossfade begin!');
-    /* FIXME: Migrate to AnimeJs
-    $.Animation(bgmVolume.gain, {
-      value: system.bgmVolume
-    }, {
-      duration: crossfadeDuration,
-      easing: 'linear'
+    cadv.anime({
+      targets: bgmVolume.gain,
+      value: system.bgmVolume,
+      easing: 'linear',
+      duration: crossfadeDuration
     });
 
-    $.Animation(audio.bgm.gain, {
-      value: 0
-    }, {
+    cadv.anime({
+      targets: audio.bgm.gain,
+      value: 0,
+      easing: 'linear',
       duration: crossfadeDuration,
-      easing: 'linear'
-    }).done(function() {
-      audio.bgmout.stop();
-      delete audio.bgm, audio.bgmout;
+      complete: function(anim) {
+        audio.bgmout.stop();
+        delete audio.bgm, audio.bgmout;
 
-      audio.bgm = bgmVolume;
-      audio.bgmout = bgmOutput;
-      log('Crossfade complete!');
+        audio.bgm = bgmVolume;
+        audio.bgmout = bgmOutput;
+        log('Crossfade complete!');
+      }
     });
-    */
   };
 
   const stopAudio = (audioType) => {
@@ -718,25 +717,25 @@ module.exports = (() => {
       canvasObject: newCanvas, // Canvas Object Holder
       imageObject: newImage, // Image Object Holder
       type: imageType, //
-      percentX: '0',
-      percentY: '0',
-      x: '0',
-      y: '0',
+      percentX: 0,
+      percentY: 0,
+      x: 0,
+      y: 0,
       iWidth: newImage.width,
       iHeight: newImage.height,
-      hFlip: '1', // Horizontal Flip
-      vFlip: '1', // Vertical Flip
-      opac: '1', // Opacity
+      hFlip: 1, // Horizontal Flip
+      vFlip: 1, // Vertical Flip
+      opac: 1, // Opacity
       originX: '50%', // Transform Origin X
       originY: '50%', // Transform Origin Y
       stretch: false, // Enable stretch (Mainly used in BG)
-      stretchScale: '1', // Stretched Scale
-      imageScale: '1', // Image Scale
-      rotate: '0', // Rotation (Degree, 0 - 360)
-      xSlice: '1',
-      ySlice: '1',
-      xCount: '0',
-      yCount: '0'
+      stretchScale: 1, // Stretched Scale
+      imageScale: 1, // Image Scale
+      rotate: 0, // Rotation (Degree, 0 - 360)
+      xSlice: 1,
+      ySlice: 1,
+      xCount: 0,
+      yCount: 0
       // Default Offset?
     };
 
@@ -851,7 +850,7 @@ module.exports = (() => {
     }
     // log(useY);
 
-    if (detailObject.xSlice === '1' && detailObject.ySlice === '1') {
+    if (detailObject.xSlice === 1 && detailObject.ySlice === 1) {
       // ncContext.drawImage(detailObject.imageObject, useX, useY, detailObject.imageObject.width * cadv.system.screenscale, detailObject.imageObject.height * cadv.system.screenscale);
       // ncContext.drawImage(detailObject.imageObject, 0, 0, detailObject.imageObject.width, detailObject.imageObject.height, useX, useY, detailObject.imageObject.width * cadv.system.screenscale, detailObject.imageObject.height * cadv.system.screenscale);
       ncContext.drawImage(detailObject.imageObject, 0, 0, detailObject.imageObject.width, detailObject.imageObject.height, useX, useY, detailObject.imageObject.width, detailObject.imageObject.height);
@@ -1221,9 +1220,13 @@ module.exports = (() => {
     cadvGamepad = null;
   });
 
+  // Some easings to animejs
+  anime.easings['swing'] = anime.easings.easeInOutSine;
+  anime.easings['swingAlt'] = anime.bezier(.02, .01, .47, 1);
+
   // -- // End Of CADV Functional Stuffs // -- //
 
-  // Only expose letiables and functions that are needed(public).
+  // Only expose variables and functions that are needed(public).
   return {
     // System & Utils
     getSystemSetting,

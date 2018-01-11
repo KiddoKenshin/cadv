@@ -1,9 +1,7 @@
 'use strict';
 
-const env = process.env.NODE_ENV;
 const webpack = require('webpack');
 module.exports = {
-
   entry: {
     'cadv': './src/cadv.js',
     'cadv.min': './src/cadv.js'
